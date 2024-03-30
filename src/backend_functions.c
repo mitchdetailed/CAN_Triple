@@ -3,12 +3,6 @@
  *
  */
 
-
-
-
-
-
-
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -16,6 +10,7 @@
 #include "user_code.h"
 #include "backend_functions.h"
 #include "main.h"
+
 
 extern FDCAN_HandleTypeDef hfdcan1;
 extern FDCAN_HandleTypeDef hfdcan2;
@@ -101,16 +96,18 @@ uint8_t CAN3_RxData[8];
 FDCAN_TxHeaderTypeDef CAN3_TxHeader;
 uint8_t CAN3_TxData[8];
 
+CAN_Message message;
 bool storecompleted = false;
 
-
-
-/* Sets CANbus Bitrate. 1M,500k,250k,125k validated */
-uint8_t setCANBitrate(uint8_t busChannel, uint32_t mainBitrate){
+/* Sets CANbus Bitrate
+CAN_1: 1, CAN_2: 2, CAN_3: 4
+1M,500k,250k,125k validated */
+uint8_t setCANBitrate(uint8_t enum_bus, uint32_t mainBitrate){
+	uint8_t returnval = 0;
 	uint32_t apb1clock = HAL_RCC_GetPCLK1Freq();
 	uint32_t prescaler = apb1clock/(mainBitrate*17);
 
-	if (busChannel == 1){
+	if ((enum_bus & CAN_1) == CAN_1){
 		hfdcan1.Instance = FDCAN1;
 		hfdcan1.Init.ClockDivider = FDCAN_CLOCK_DIV1;
 		hfdcan1.Init.FrameFormat = FDCAN_FRAME_CLASSIC;
@@ -130,11 +127,10 @@ uint8_t setCANBitrate(uint8_t busChannel, uint32_t mainBitrate){
 		hfdcan1.Init.ExtFiltersNbr = 0;
 		hfdcan1.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
 		if (HAL_FDCAN_Init(&hfdcan1) != HAL_OK){
-		    Error_Handler();
+		    returnval += 1;
 		}
-		return 0;
 	}
-	else if (busChannel == 2){
+	if ((enum_bus & CAN_2) == CAN_2){
 		hfdcan2.Instance = FDCAN2;
 		hfdcan2.Init.ClockDivider = FDCAN_CLOCK_DIV1;
 		hfdcan2.Init.FrameFormat = FDCAN_FRAME_CLASSIC;
@@ -154,11 +150,10 @@ uint8_t setCANBitrate(uint8_t busChannel, uint32_t mainBitrate){
 		hfdcan2.Init.ExtFiltersNbr = 0;
 		hfdcan2.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
 		if (HAL_FDCAN_Init(&hfdcan2) != HAL_OK){
-		    Error_Handler();
+		    returnval += 2;
 		}
-		return 0;
 	}
-	else if (busChannel == 3){
+	if ((enum_bus & CAN_3) == CAN_3){
 		hfdcan3.Instance = FDCAN3;
 		hfdcan3.Init.ClockDivider = FDCAN_CLOCK_DIV1;
 		hfdcan3.Init.FrameFormat = FDCAN_FRAME_CLASSIC;
@@ -178,75 +173,72 @@ uint8_t setCANBitrate(uint8_t busChannel, uint32_t mainBitrate){
 		hfdcan3.Init.ExtFiltersNbr = 0;
 		hfdcan3.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
 		if (HAL_FDCAN_Init(&hfdcan3) != HAL_OK){
-		    Error_Handler();
+		    returnval += 4;
 		}
-		return 0;
 	}
-return -1;
+return returnval;
 }
 
-/* Start CAN Bus */
-uint8_t startCANbus(uint8_t busChannel){
+/* Start CAN Bus
+CAN_1: 1, CAN_2: 2, CAN_3: 4 */
+uint8_t startCANbus(uint8_t enum_bus){
+	uint8_t groupval = 0;
+	uint8_t returnval = 0;
 
-		// Unused filter //
-
-		/*  FDCAN_FilterTypeDef sFilterConfig;
-		**  sFilterConfig.IdType = FDCAN_STANDARD_ID;
-		**  sFilterConfig.FilterIndex = 0;
-		**  sFilterConfig.FilterType = FDCAN_FILTER_MASK;
-		**  sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0;
-		**  sFilterConfig.FilterID1 = 0x321;
-		**  sFilterConfig.FilterID2 = 0x7FF;
-		**  if (HAL_FDCAN_ConfigFilter(&hfdcan1, &sFilterConfig) != HAL_OK)
-		**  {
-		**    Error_Handler();
-		**  }
-		*/
-	if (busChannel == 1){
+	if ((enum_bus & CAN_1) == CAN_1){
 		if (HAL_FDCAN_ConfigGlobalFilter(&hfdcan1, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_REJECT_REMOTE, FDCAN_REJECT_REMOTE) != HAL_OK){
-			Error_Handler();
+			groupval += 1;
 		}
 		if (HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE | FDCAN_IT_ERROR_PASSIVE | FDCAN_IT_ERROR_LOGGING_OVERFLOW | FDCAN_IT_DATA_PROTOCOL_ERROR | FDCAN_IT_ARB_PROTOCOL_ERROR | FDCAN_IT_BUS_OFF | FDCAN_IT_ERROR_WARNING | FDCAN_IT_TX_COMPLETE, FDCAN_TX_BUFFER0 | FDCAN_TX_BUFFER1 | FDCAN_TX_BUFFER2) != HAL_OK){
-			Error_Handler();
+			groupval += 2;
 		}
 		/* Start the FDCAN module */
 		if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK){
-			Error_Handler();
+			groupval += 4;
 		}
-		return 0;
+		if (groupval != 0){
+			returnval += 1;
+		}
 	}
-	else if (busChannel == 2){
+	groupval = 0;
+	if ((enum_bus & CAN_2) == CAN_2){
 		if (HAL_FDCAN_ConfigGlobalFilter(&hfdcan2, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_REJECT_REMOTE, FDCAN_REJECT_REMOTE) != HAL_OK){
-			Error_Handler();
+			groupval += 1;
 		}
 		if (HAL_FDCAN_ActivateNotification(&hfdcan2, FDCAN_IT_RX_FIFO0_NEW_MESSAGE | FDCAN_IT_ERROR_PASSIVE | FDCAN_IT_ERROR_LOGGING_OVERFLOW | FDCAN_IT_DATA_PROTOCOL_ERROR | FDCAN_IT_ARB_PROTOCOL_ERROR | FDCAN_IT_BUS_OFF | FDCAN_IT_ERROR_WARNING | FDCAN_IT_TX_COMPLETE, FDCAN_TX_BUFFER0 | FDCAN_TX_BUFFER1 | FDCAN_TX_BUFFER2) != HAL_OK){
-			Error_Handler();
+			groupval += 2;
 		}
 		/* Start the FDCAN module */
 		if (HAL_FDCAN_Start(&hfdcan2) != HAL_OK){
-			Error_Handler();
+			groupval += 4;
 		}
-		return 0;
+		if (groupval != 0){
+			returnval += 2;
+		}
 	}
-	else if (busChannel == 3){
+	groupval = 0;
+	if ((enum_bus & CAN_3) == CAN_3){
 		if (HAL_FDCAN_ConfigGlobalFilter(&hfdcan3, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_REJECT_REMOTE, FDCAN_REJECT_REMOTE) != HAL_OK){
-			Error_Handler();
+			groupval += 1;
 		}
 		if (HAL_FDCAN_ActivateNotification(&hfdcan3, FDCAN_IT_RX_FIFO0_NEW_MESSAGE | FDCAN_IT_ERROR_PASSIVE | FDCAN_IT_ERROR_LOGGING_OVERFLOW | FDCAN_IT_DATA_PROTOCOL_ERROR | FDCAN_IT_ARB_PROTOCOL_ERROR | FDCAN_IT_BUS_OFF | FDCAN_IT_ERROR_WARNING | FDCAN_IT_TX_COMPLETE, FDCAN_TX_BUFFER0 | FDCAN_TX_BUFFER1 | FDCAN_TX_BUFFER2) != HAL_OK){
-			Error_Handler();
+			groupval += 2;
 		}
 		/* Start the FDCAN module */
 		if (HAL_FDCAN_Start(&hfdcan3) != HAL_OK){
-			Error_Handler();
+			groupval += 4;
 		}
-		return 0;
+		if (groupval != 0){
+			returnval += 2;
+		}
 	}
-	return -1;
+	return returnval;
 }
 
-
-/* Stop CAN Bus */
-uint8_t stopCANbus(uint8_t busChannel){
+/* Stop CAN Bus
+CAN_1: 1, CAN_2: 2, CAN_3: 4 */
+uint8_t stopCANbus(uint8_t enum_bus){
+	uint8_t returnval = 0;
 
 		// Unused filter //
 
@@ -262,57 +254,52 @@ uint8_t stopCANbus(uint8_t busChannel){
 		**    Error_Handler();
 		**  }
 		*/
-	if (busChannel == 1){
+	if ((enum_bus & CAN_1) == CAN_1){
 		if (HAL_FDCAN_Stop(&hfdcan1) != HAL_OK){
-			Error_Handler();
+			returnval += 1;
 		}
-		return 0;
 	}
-	else if (busChannel == 2){
+	if ((enum_bus & CAN_2) == CAN_2){
 		if (HAL_FDCAN_Stop(&hfdcan2) != HAL_OK){
-			Error_Handler();
+			returnval += 2;
 		}
-		return 0;
 	}
-	else if (busChannel == 3){
+	if ((enum_bus & CAN_3) == CAN_3){
 		if (HAL_FDCAN_Stop(&hfdcan3) != HAL_OK){
-			Error_Handler();
+			returnval += 4;
 		}
-		return 0;
 	}
-	return -1;
+	return returnval;
 }
 
-/* Set/Reset CAN Termination */
-uint8_t setCAN_Termination(uint8_t busChannel, bool activated){
-	if (busChannel == 1){
+/* Set/Reset CAN Termination
+CAN_1: 1, CAN_2: 2, CAN_3: 4 */
+uint8_t setCAN_Termination(uint8_t enum_bus, bool activated){
+	if ((enum_bus & CAN_1) == CAN_1){
 		if (activated == true){
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, 1);
 		}
 		else{
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, 0);
 		}
-		return 0;
 	}
-	else if (busChannel == 2){
+	if ((enum_bus & CAN_2) == CAN_2){
 		if (activated == true){
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 1);
 		}
 		else{
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 0);
 		}
-		return 0;
 	}
-	else if (busChannel == 3){
+	if ((enum_bus & CAN_3) == CAN_3){
 		if (activated == true){
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, 1);
 		}
 		else{
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, 0);
 		}
-		return 0;
 	}
-	return -1;
+	return 0;
 }
 
 /* Interrupt Service Routine for Rx Messages */
@@ -339,7 +326,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 			if (Callback_Rx_DLC > 8){
 				Callback_Rx_DLC = 8;
 			}
-			add_to_CAN_RX_Queue(1, Callback_Rx_ID_Type, Callback_Rx_ID, Callback_Rx_DLC, CAN1_RxData);
+			add_to_CAN_RX_Queue(CAN_1, Callback_Rx_ID_Type, Callback_Rx_ID, Callback_Rx_DLC, CAN1_RxData);
 
 		}
 		if (hfdcan->Instance == FDCAN2){
@@ -362,7 +349,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 			if (Callback_Rx_DLC > 8){
 				Callback_Rx_DLC = 8;
 			}
-			add_to_CAN_RX_Queue(2, Callback_Rx_ID_Type, Callback_Rx_ID, Callback_Rx_DLC, CAN2_RxData);
+			add_to_CAN_RX_Queue(CAN_2, Callback_Rx_ID_Type, Callback_Rx_ID, Callback_Rx_DLC, CAN2_RxData);
 		}
 		if (hfdcan->Instance == FDCAN3){
 			if (HAL_FDCAN_GetRxMessage(&hfdcan3, FDCAN_RX_FIFO0, &CAN3_RxHeader, CAN3_RxData) != HAL_OK){
@@ -384,7 +371,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 			if (Callback_Rx_DLC > 8){
 				Callback_Rx_DLC = 8;
 			}
-			add_to_CAN_RX_Queue(3, Callback_Rx_ID_Type, Callback_Rx_ID, Callback_Rx_DLC, CAN3_RxData);
+			add_to_CAN_RX_Queue(CAN_3, Callback_Rx_ID_Type, Callback_Rx_ID, Callback_Rx_DLC, CAN3_RxData);
 		}
 	}
 }
@@ -402,10 +389,11 @@ void HAL_FDCAN_TxBufferCompleteCallback(FDCAN_HandleTypeDef *hfdcan, uint32_t Bu
 	}
 }
 
-/* Add to CAN Receive Queue*/
-uint8_t add_to_CAN_RX_Queue(uint8_t enum_busChannel, bool EXT_ID, uint32_t ID, uint8_t DLC, uint8_t rxData[8]){
+/* Add to CAN Receive Queue
+CAN_1: 1, CAN_2: 2, CAN_3: 4 */
+uint8_t add_to_CAN_RX_Queue(uint8_t enum_bus, bool EXT_ID, uint32_t ID, uint8_t DLC, uint8_t rxData[8]){
 	uint8_t return_val = 0;
-	if((enum_busChannel & 0x01) == 0x01){
+	if((enum_bus & CAN_1) == CAN_1){
 		can1_Rx_qNextHead = (can1_Rx_qHead + 1) & 0xFF;
 		/*  if there is room */
 		if (can1_Rx_qNextHead != can1_Rx_qTail){
@@ -417,14 +405,13 @@ uint8_t add_to_CAN_RX_Queue(uint8_t enum_busChannel, bool EXT_ID, uint32_t ID, u
 			}
 			can1_Rx_qHead = can1_Rx_qNextHead;
 			can1_Rx_qElements ++;
-		return_val += 0;
 		}
 		else{
 		/* no room left in the buffer */
-			return_val -= 1;
+			return_val += 1;
 		}
 	}
-	if ((enum_busChannel & 0x02) == 0x02){
+	if ((enum_bus & CAN_2) == CAN_2){
 		can2_Rx_qNextHead = (can2_Rx_qHead + 1) & 0xFF;
 		/*  if there is room */
 		if (can2_Rx_qNextHead != can2_Rx_qTail){
@@ -436,14 +423,13 @@ uint8_t add_to_CAN_RX_Queue(uint8_t enum_busChannel, bool EXT_ID, uint32_t ID, u
 			}
 			can2_Rx_qHead = can2_Rx_qNextHead;
 			can2_Rx_qElements ++;
-			return_val += 0;
 		}
 		else{
 			/* no room left in the buffer */
-		return_val -= 2;
+		return_val += 2;
 		}
 	}
-	if ((enum_busChannel & 0x04) == 0x04){
+	if ((enum_bus & CAN_3) == CAN_3){
 		can3_Rx_qNextHead = (can3_Rx_qHead + 1) & 0xFF;
 		/*  if there is room */
 		if (can3_Rx_qNextHead != can3_Rx_qTail){
@@ -455,132 +441,117 @@ uint8_t add_to_CAN_RX_Queue(uint8_t enum_busChannel, bool EXT_ID, uint32_t ID, u
 			}
 			can3_Rx_qHead = can3_Rx_qNextHead;
 			can3_Rx_qElements ++;
-			return_val += 0;
 		}
 		else{
 			/* no room left in the buffer */
-		return_val -= 4;
+		return_val += 4;
 		}
 	}
 	return return_val;
 }
 
-/* Add to CAN Transmit Queue*/
-uint8_t add_to_CAN_TX_Queue(uint8_t enum_busChannel, bool EXT_ID, uint32_t ID, uint8_t DLC, uint8_t Data[8]){
+/* Add to CAN Transmit Queue
+CAN_1: 1, CAN_2: 2, CAN_3: 4 */
+uint8_t add_to_CAN_TX_Queue(uint8_t enum_bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t data[8]){
 	uint8_t return_val = 0;
-	if((enum_busChannel & 0x01) == 0x01){
-		can1_Tx_qNextHead = (can1_Tx_qHead + 1) & 0xFF;
+	if((enum_bus & CAN_1) == CAN_1){
+		can1_Tx_qNextHead = (can1_Tx_qHead + 1) & (BUFFER_SIZE-1);
 		/*  if there is room */
 		if (can1_Tx_qNextHead != can1_Tx_qTail){
-			can1_Tx_qData[can1_Tx_qHead].EXT_ID = EXT_ID;
-			can1_Tx_qData[can1_Tx_qHead].arb_id = ID;
-			can1_Tx_qData[can1_Tx_qHead].dlc = DLC;
-			for (uint8_t i = 0; i < DLC; i++){
-				can1_Tx_qData[can1_Tx_qHead].data[i] = Data[i];
+			can1_Tx_qData[can1_Tx_qHead].EXT_ID = is_extended_id;
+			can1_Tx_qData[can1_Tx_qHead].arb_id = arbitration_id;
+			can1_Tx_qData[can1_Tx_qHead].dlc = dlc;
+			for (uint8_t i = 0; i < dlc; i++){
+				can1_Tx_qData[can1_Tx_qHead].data[i] = data[i];
 			}
 			can1_Tx_qHead = can1_Tx_qNextHead;
 			can1_Tx_qElements ++;
-		return_val += 0;
 		}
 		else{
 		/* no room left in the buffer */
-			return_val -= 1;
+			return_val += 1;
 		}
 	}
-	if ((enum_busChannel & 0x02) == 0x02){
-		can2_Tx_qNextHead = (can2_Tx_qHead + 1) & 0xFF;
+	if ((enum_bus & CAN_2) == CAN_2){
+		can2_Tx_qNextHead = (can2_Tx_qHead + 1) & (BUFFER_SIZE-1);
 		/*  if there is room */
 		if (can2_Tx_qNextHead != can2_Tx_qTail){
-			can2_Tx_qData[can2_Tx_qHead].EXT_ID = EXT_ID;
-			can2_Tx_qData[can2_Tx_qHead].arb_id = ID;
-			can2_Tx_qData[can2_Tx_qHead].dlc = DLC;
-			for (uint8_t i = 0; i < DLC; i++){
-				can2_Tx_qData[can2_Tx_qHead].data[i] = Data[i];
+			can2_Tx_qData[can2_Tx_qHead].EXT_ID = is_extended_id;
+			can2_Tx_qData[can2_Tx_qHead].arb_id = arbitration_id;
+			can2_Tx_qData[can2_Tx_qHead].dlc = dlc;
+			for (uint8_t i = 0; i < dlc; i++){
+				can2_Tx_qData[can2_Tx_qHead].data[i] = data[i];
 			}
 			can2_Tx_qHead = can2_Tx_qNextHead;
 			can2_Tx_qElements ++;
-			return_val += 0;
 		}
 		else{
 			/* no room left in the buffer */
-		return_val -= 2;
+		return_val += 2;
 		}
 	}
-	if ((enum_busChannel & 0x04) == 0x04){
-		can3_Tx_qNextHead = (can3_Tx_qHead + 1) & 0xFF;
+	if ((enum_bus & CAN_3) == CAN_3){
+		can3_Tx_qNextHead = (can3_Tx_qHead + 1) & (BUFFER_SIZE-1);
 		/*  if there is room */
 		if (can3_Tx_qNextHead != can3_Tx_qTail){
-			can3_Tx_qData[can3_Tx_qHead].EXT_ID = EXT_ID;
-			can3_Tx_qData[can3_Tx_qHead].arb_id = ID;
-			can3_Tx_qData[can3_Tx_qHead].dlc = DLC;
-			for (uint8_t i = 0; i < DLC; i++){
-				can3_Tx_qData[can3_Tx_qHead].data[i] = Data[i];
+			can3_Tx_qData[can3_Tx_qHead].EXT_ID = is_extended_id;
+			can3_Tx_qData[can3_Tx_qHead].arb_id = arbitration_id;
+			can3_Tx_qData[can3_Tx_qHead].dlc = dlc;
+			for (uint8_t i = 0; i < dlc; i++){
+				can3_Tx_qData[can3_Tx_qHead].data[i] = data[i];
 			}
 			can3_Tx_qHead = can3_Tx_qNextHead;
 			can3_Tx_qElements ++;
-			return_val += 0;
 		}
 		else{
 			/* no room left in the buffer */
-		return_val -= 4;
+		return_val += 4;
 		}
 	}
 	return return_val;
 }
 
 /* Callback for Received Messages for OnReceive Function*/
-void trigger_CAN_RX(){
-	while (can1_Rx_qElements > 0){
-		if (can1_Rx_qData[can1_Rx_qTail].EXT_ID == true){
-			Can1_RxMsgEXT_ID = true;
-		}
-		else{
-			Can1_RxMsgEXT_ID = false;
-		}
-		Can1_RxMsgID = can1_Rx_qData[can1_Rx_qTail].arb_id;
-		Can1_RxMsgDLC = can1_Rx_qData[can1_Rx_qTail].dlc;
-		for (uint8_t i = 0; i < 8; i++){
-			Can1_RxMsgData[i] = can1_Rx_qData[can1_Rx_qTail].data[i];
-		}
-		can1_Rx_qTail = (can1_Rx_qTail + 1) & 0xFF;
-		can1_Rx_qElements--;
-		/* */ // Do things with the  Can 1 Messages here....
-		onReceive(1,Can1_RxMsgEXT_ID,Can1_RxMsgID,Can1_RxMsgDLC,Can1_RxMsgData );
+void trigger_CAN_RX() {
+    while (can1_Rx_qElements > 0) {
+        message.Bus = CAN_1;
+        message.is_extended_id = can1_Rx_qData[can1_Rx_qTail].EXT_ID;
+        message.arbitration_id = can1_Rx_qData[can1_Rx_qTail].arb_id;
+        message.dlc = can1_Rx_qData[can1_Rx_qTail].dlc;
+        for (uint8_t i = 0; i < 8; i++) {
+            message.data[i] = can1_Rx_qData[can1_Rx_qTail].data[i];
+        }
+        can1_Rx_qTail = (can1_Rx_qTail + 1) & 0xFF;
+        can1_Rx_qElements--;
+        // Now, you can call onReceive with a single CANMessage struct.
+        onReceive(message);
+    }
 
-	}
 	while (can2_Rx_qElements > 0){
-		if (can2_Rx_qData[can2_Rx_qTail].EXT_ID == true){
-			Can2_RxMsgEXT_ID = true;
-		}
-		else{
-			Can2_RxMsgEXT_ID = false;
-		}
-		Can2_RxMsgID = can2_Rx_qData[can2_Rx_qTail].arb_id;
-		Can2_RxMsgDLC = can2_Rx_qData[can2_Rx_qTail].dlc;
+		message.Bus = CAN_2;
+		message.is_extended_id = can2_Rx_qData[can2_Rx_qTail].EXT_ID;
+		message.arbitration_id = can2_Rx_qData[can2_Rx_qTail].arb_id;
+		message.dlc = can2_Rx_qData[can2_Rx_qTail].dlc;
 		for (uint8_t i = 0; i < 8; i++){
-			Can2_RxMsgData[i] = can2_Rx_qData[can2_Rx_qTail].data[i];
+			message.data[i] = can2_Rx_qData[can2_Rx_qTail].data[i];
 		}
 		can2_Rx_qTail = (can2_Rx_qTail + 1) & 0xFF;
 		can2_Rx_qElements--;
 		/* */ // Do things with the  Can 2 Messages here....
-		onReceive(2,Can2_RxMsgEXT_ID,Can2_RxMsgID,Can2_RxMsgDLC,Can2_RxMsgData );
+		onReceive(message);
 	}
 	while (can3_Rx_qElements > 0){
-		if (can3_Rx_qData[can3_Rx_qTail].EXT_ID == true){
-			Can3_RxMsgEXT_ID = true;
-		}
-		else{
-			Can3_RxMsgEXT_ID = false;
-		}
-		Can3_RxMsgID = can3_Rx_qData[can3_Rx_qTail].arb_id;
-		Can3_RxMsgDLC = can3_Rx_qData[can3_Rx_qTail].dlc;
+		message.Bus = CAN_3;
+		message.is_extended_id = can3_Rx_qData[can3_Rx_qTail].EXT_ID;
+		message.arbitration_id = can3_Rx_qData[can3_Rx_qTail].arb_id;
+		message.dlc = can3_Rx_qData[can3_Rx_qTail].dlc;
 		for (uint8_t i = 0; i < 8; i++){
-			Can3_RxMsgData[i] = can3_Rx_qData[can3_Rx_qTail].data[i];
+			message.data[i] = can3_Rx_qData[can3_Rx_qTail].data[i];
 		}
 		can3_Rx_qTail = (can3_Rx_qTail + 1) & 0xFF;
 		can3_Rx_qElements--;
 		/* */ // Do things with the  Can 3 Messages here....
-		onReceive(3,Can3_RxMsgEXT_ID,Can3_RxMsgID,Can3_RxMsgDLC,Can3_RxMsgData);
+		onReceive(message);
 	}
 }
 
@@ -692,70 +663,85 @@ void HAL_FDCAN_ErrorStatusCallback(FDCAN_HandleTypeDef *hfdcan, uint32_t ErrorSt
 	if (hfdcan->Instance == FDCAN1){
 		canTxErrorCount = ((hfdcan->Instance->ECR & FDCAN_ECR_TEC) >> FDCAN_ECR_TEC_Pos);
 		if (canTxErrorCount > 240){
-			resetCAN(1);
+			resetCAN(CAN_1);
 		}
 		canRxErrorCount = ((hfdcan->Instance->ECR & FDCAN_ECR_REC) >> FDCAN_ECR_REC_Pos);
 		if (canRxErrorCount > 120){
-			resetCAN(1);
+			resetCAN(CAN_1);
 		}
 	}
 	if (hfdcan->Instance == FDCAN2){
 		canTxErrorCount = ((hfdcan->Instance->ECR & FDCAN_ECR_TEC) >> FDCAN_ECR_TEC_Pos);
 		if (canTxErrorCount > 240){
-			resetCAN(2);
+			resetCAN(CAN_2);
 		}
 		canRxErrorCount = ((hfdcan->Instance->ECR & FDCAN_ECR_REC) >> FDCAN_ECR_REC_Pos);
 		if (canRxErrorCount > 120){
-			resetCAN(2);
+			resetCAN(CAN_2);
 		}
 	}
 	if (hfdcan->Instance == FDCAN3){
 		canTxErrorCount = ((hfdcan->Instance->ECR & FDCAN_ECR_TEC) >> FDCAN_ECR_TEC_Pos);
 		if (canTxErrorCount > 240){
-			resetCAN(3);
+			resetCAN(CAN_3);
 		}
 		canRxErrorCount = ((hfdcan->Instance->ECR & FDCAN_ECR_REC) >> FDCAN_ECR_REC_Pos);
 		if (canRxErrorCount > 120){
-			resetCAN(3);
+			resetCAN(CAN_3);
 		}
 	}
 }
 
-/* Resets CAN network(s) */
-void resetCAN(uint8_t busChannel){
-	if (busChannel == 1){
+/* Resets CAN network(s)
+CAN_1: 1, CAN_2: 2, CAN_3: 4 */
+uint8_t resetCAN(uint8_t enum_bus){
+	uint8_t groupval = 0;
+	uint8_t returnval = 0;
+	if ((enum_bus & CAN_1) == CAN_1){
 		if (HAL_FDCAN_Stop(&hfdcan1) != HAL_OK){
-			Error_Handler();
+			groupval += 1;
 		}
 				/* Start the FDCAN module */
 		if (hfdcan1.State == HAL_FDCAN_STATE_READY){
 			if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK){
-				Error_Handler();
+				groupval += 2;
 			}
 		}
+		if (groupval != 0){
+			returnval += 1;
+		}
+	groupval = 0;
 	}
-	if (busChannel == 2){
+	if ((enum_bus & CAN_2) == CAN_2){
 		if (HAL_FDCAN_Stop(&hfdcan2) != HAL_OK){
-			Error_Handler();
+			groupval += 1;
 		}
 				/* Start the FDCAN module */
 		if (hfdcan2.State == HAL_FDCAN_STATE_READY){
 			if (HAL_FDCAN_Start(&hfdcan2) != HAL_OK){
-				Error_Handler();
+				groupval += 2;
 			}
 		}
+		if (groupval != 0){
+			returnval += 2;
+		}
+	groupval = 0;
 	}
-	if (busChannel == 3){
+	if ((enum_bus & CAN_3) == CAN_3){
 		if (HAL_FDCAN_Stop(&hfdcan3) != HAL_OK){
-			Error_Handler();
+			groupval += 1;
 		}
 				/* Start the FDCAN module */
 		if (hfdcan3.State == HAL_FDCAN_STATE_READY){
 			if (HAL_FDCAN_Start(&hfdcan3) != HAL_OK){
-				Error_Handler();
+				groupval += 2;
 			}
 		}
+		if (groupval != 0){
+			returnval += 4;
+		}
 	}
+	return returnval;
 }
 
 
@@ -791,7 +777,7 @@ uint8_t calculateCRC8(uint8_t *data, size_t length, uint8_t polynomial, uint8_t 
     if (reflectOutput){
         crc = reflect8(crc);
     }
-    return crc ^ finalXor;
+    return (crc ^ finalXor);
 }
 
 /* reflect16 function */
@@ -826,7 +812,7 @@ uint16_t calculateCRC16(uint8_t *data, size_t length, uint16_t polynomial, uint1
     if (reflectOutput){
         crc = reflect16(crc);
     }
-    return crc ^ finalXor;
+    return (crc ^ finalXor);
 }
 
 /* reflect32 function */
@@ -861,7 +847,7 @@ uint32_t calculateCRC32(uint8_t *data, size_t length, uint32_t polynomial, uint3
     if (reflectOutput){
         crc = reflect32(crc);
     }
-    return crc ^ finalXor;
+    return (crc ^ finalXor);
 }
 
 
@@ -895,9 +881,10 @@ uint8_t getRDP(void){
 	return rdplevel;
 }
 /* Set Readout Protection - !Disables debugging! */
-void setRDP(bool on){
+uint8_t setRDP(bool on){
+	uint8_t returnval = 0;
 	uint8_t level = getRDP();
-	if ((level == 0) & (on = true)){
+	if ((level == 0) & (on == true)){
 		HAL_FLASH_Unlock();
 		HAL_FLASH_OB_Unlock();
 		FLASH_OBProgramInitTypeDef obConfig;
@@ -908,7 +895,7 @@ void setRDP(bool on){
 		HAL_FLASH_OB_Lock();
 		HAL_FLASH_Lock();
 	}
-	else if ((level != 0) & (on = false)){
+	else if ((level != 0) & (on == false)){
 		HAL_FLASH_Unlock();
 		HAL_FLASH_OB_Unlock();
 		FLASH_OBProgramInitTypeDef obConfig;
@@ -919,8 +906,10 @@ void setRDP(bool on){
 		HAL_FLASH_OB_Lock();
 		HAL_FLASH_Lock();
 	}
+	return returnval;
 }
 
+/* Initialize Powerdown Voltage Detection*/
 void init_PVD(){
 	PWR_PVDTypeDef sconfigPVD;
 	sconfigPVD.PVDLevel = PWR_CR2_PLS_LEV6; //2.9 Volt Threshold Level 6
@@ -929,38 +918,46 @@ void init_PVD(){
 	HAL_PWR_EnablePVD();
 }
 
-//void HAL_PWR_PVDCallback(){
-//	xShutdown_Function();
-//}
+void HAL_PWR_PVDCallback(){
+	events_Shutdown();
+}
 
+/* Read 8 bit unsigned value from address */
 uint8_t read_uint8_t_from_address(void* address) {
     return *(uint8_t*)address;
 }
 
+/* Read 8 bit signed value from address */
 int8_t read_int8_t_from_address(void* address) {
     return *(int8_t*)address;
 }
 
+/* Read 16 bit unsigned value from address */
 uint16_t read_uint16_t_from_address(void* address) {
     return *(uint16_t*)address;
 }
 
+/* Read 16 bit signed value from address */
 int16_t read_int16_t_from_address(void* address) {
     return *(int16_t*)address;
 }
 
+/* Read 32 bit unsigned value from address */
 uint32_t read_uint32_t_from_address(void* address) {
     return *(uint32_t*)address;
 }
 
+/* Read 32 bit signed value from address */
 int32_t read_int32_t_from_address(void* address) {
     return *(uint32_t*)address;
 }
 
+/* Read float value from address */
 float read_float_from_address(void* address) {
     return *(float*)address;
 }
 
+/* Read character array from address */
 char* read_char_array_from_address(const void* source, size_t length) {
     char* dest = malloc(length * sizeof(char));
     if (dest == NULL) {
@@ -973,7 +970,19 @@ char* read_char_array_from_address(const void* source, size_t length) {
     return dest;
 }
 
+/* Write LED Pin(s) on Board */
+void writeLED(uint8_t led_enum, bool high){
+	if(led_enum == LED_1){
+		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, high);
+	}
+}
 
+/* Toggle LED Pin(s) on Board */
+void toggleLED(uint8_t led_enum){
+	if(led_enum == LED_1){
+		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_10);
+	}
+}
 
 /* Flash Back Data to the last Page in FLASH Memory */
 void writeFlash(uint32_t page, uint8_t *Data, uint16_t dataSize){

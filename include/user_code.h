@@ -11,19 +11,19 @@
 #include <stddef.h>
 
 
-void xStartup_Function(void);
-void x2000hz_Function(void);
-void x1000hz_Function(void);
-void x500hz_Function(void);
-void x200hz_Function(void);
-void x100hz_Function(void);
-void x50hz_Function(void);
-void x20hz_Function(void);
-void x10hz_Function(void);
-void x5hz_Function(void);
-void x2hz_Function(void);
-void x1hz_Function(void);
-
+void events_Startup(void);
+void events_2000Hz(void);
+void events_1000Hz(void);
+void events_500Hz(void);
+void events_200Hz(void);
+void events_100Hz(void);
+void events_50Hz(void);
+void events_20Hz(void);
+void events_10Hz(void);
+void events_5Hz(void);
+void events_2Hz(void);
+void events_1Hz(void);
+void events_Shutdown(void);
 
 
 #endif /* INC_USER_CODE_H_ */
