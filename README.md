@@ -66,5 +66,5 @@ void onReceive(CAN_Message);
 ---    uint32_t arbitration_id;
 ---    uint8_t dlc;
 ---    uint8_t data[8];
-// we'll define the CAN_Message and call each field usint the [dot] operator.
+// we'll define the CAN_Message and call each field using the [dot] operator.
 
