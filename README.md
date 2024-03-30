@@ -47,14 +47,24 @@ uint8_t add_to_CAN_TX_Queue(uint8_t enum_bus, bool EXT_ID, uint32_t ID, uint8_t 
 Turning GPIO LED on/off : 
 ```C
 void writeLED(uint8_t LED_int, bool high);
-\\ led_enum will be the LED Enumeration(s)..
-\\ high will be a true or false value for setting on or off..
+// led_enum will be the LED Enumeration(s)..
+// high will be a true or false value for setting on or off..
 ```
 ---
 Toggling GPIO LED : 
 ```C
 void writeLED(uint8_t LED_int);
-\\ led_enum will be the LED Enumeration(s)..
+// led_enum will be the LED Enumeration(s)..
 ```
-
+---
+Managing Received CAN Messages : 
+```C
+void onReceive(CAN_Message);
+// the CAN_Message struct will contain the following items :
+---    uint8_t Bus; // will be the Bus Enumeration.
+---    bool is_extended_id; // will be 
+---    uint32_t arbitration_id;
+---    uint8_t dlc;
+---    uint8_t data[8];
+// we'll define the CAN_Message and call each field usint the [dot] operator.
 
