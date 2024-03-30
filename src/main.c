@@ -63,17 +63,17 @@ uint32_t timercounter_d10 = 0;
 uint32_t timercounter_d5 = 0;
 uint32_t timercounter_d2 = 0;
 
-uint8_t x2000hz_trigger = 0;
-uint8_t x1000hz_trigger = 0;
-uint8_t x500hz_trigger = 0;
-uint8_t x200hz_trigger = 0;
-uint8_t x100hz_trigger = 0;
-uint8_t x50hz_trigger = 0;
-uint8_t x20hz_trigger = 0;
-uint8_t x10hz_trigger = 0;
-uint8_t x5hz_trigger = 0;
-uint8_t x2hz_trigger = 0;
-uint8_t x1hz_trigger = 0;
+uint8_t x2000Hz_trigger = 0;
+uint8_t x1000Hz_trigger = 0;
+uint8_t x500Hz_trigger = 0;
+uint8_t x200Hz_trigger = 0;
+uint8_t x100Hz_trigger = 0;
+uint8_t x50Hz_trigger = 0;
+uint8_t x20Hz_trigger = 0;
+uint8_t x10Hz_trigger = 0;
+uint8_t x5Hz_trigger = 0;
+uint8_t x2Hz_trigger = 0;
+uint8_t x1Hz_trigger = 0;
 
 /* USER CODE END PV */
 
@@ -126,7 +126,7 @@ int main(void)
   MX_FDCAN3_Init();
   MX_TIM8_Init();
   /* USER CODE BEGIN 2 */
-  xStartup_Function();
+  events_Startup();
   //init_PVD();
 
 
@@ -138,59 +138,59 @@ int main(void)
   {
 	  trigger_CAN_RX();
 	  trigger_CAN_TX();
-	  if(x2000hz_trigger == 1){
-		  x2000hz_trigger = 0;
-		  x2000hz_Function();
+	  if(x2000Hz_trigger == 1){
+		  x2000Hz_trigger = 0;
+		  events_2000Hz();
 	  }
 
-	  if(x1000hz_trigger == 1){
-		  x1000hz_trigger = 0;
-		  x1000hz_Function();
+	  if(x1000Hz_trigger == 1){
+		  x1000Hz_trigger = 0;
+		  events_1000Hz();
 	  }
 
-	  if(x500hz_trigger == 1){
-		  x500hz_trigger = 0;
-		  x500hz_Function();
+	  if(x500Hz_trigger == 1){
+		  x500Hz_trigger = 0;
+		  events_500Hz();
 	  }
 
-	  if(x200hz_trigger == 1){
-		  x200hz_trigger = 0;
-		  x200hz_Function();
+	  if(x200Hz_trigger == 1){
+		  x200Hz_trigger = 0;
+		  events_200Hz();
 	  }
 
-	  if(x100hz_trigger == 1){
-		  x100hz_trigger = 0;
-		  x100hz_Function();
+	  if(x100Hz_trigger == 1){
+		  x100Hz_trigger = 0;
+		  events_100Hz();
 	  }
 
-	  if(x50hz_trigger == 1){
-		  x50hz_trigger = 0;
-		  x50hz_Function();
+	  if(x50Hz_trigger == 1){
+		  x50Hz_trigger = 0;
+		  events_50Hz();
 	  }
 
-	  if(x20hz_trigger == 1){
-		  x20hz_trigger = 0;
-		  x20hz_Function();
+	  if(x20Hz_trigger == 1){
+		  x20Hz_trigger = 0;
+		  events_20Hz();
 	  }
 
-	  if(x10hz_trigger == 1){
-		  x10hz_trigger = 0;
-		  x10hz_Function();
+	  if(x10Hz_trigger == 1){
+		  x10Hz_trigger = 0;
+		  events_10Hz();
 	  }
 
-	  if(x5hz_trigger == 1){
-		  x5hz_trigger = 0;
-		  x5hz_Function();
+	  if(x5Hz_trigger == 1){
+		  x5Hz_trigger = 0;
+		  events_5Hz();
 	  }
 
-	  if(x2hz_trigger == 1){
-		  x2hz_trigger = 0;
-		  x2hz_Function();
+	  if(x2Hz_trigger == 1){
+		  x2Hz_trigger = 0;
+		  events_2Hz();
 	  }
 
-	  if(x1hz_trigger == 1){
-		  x1hz_trigger = 0;
-		  x1hz_Function();
+	  if(x1Hz_trigger == 1){
+		  x1Hz_trigger = 0;
+		  events_1Hz();
 	  }
     /* USER CODE END WHILE */
 
@@ -468,52 +468,52 @@ static void MX_GPIO_Init(void)
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
 	if (htim == &htim8){
 		timercounter_d2000 += 1;
-		x2000hz_trigger = 1;
+		x2000Hz_trigger = 1;
 		if ((timercounter_d2000 & 0x02) == 0x02){
 		    timercounter_d2000 = 0;
 			timercounter_d1000 += 1;
-			x1000hz_trigger = 1;
+			x1000Hz_trigger = 1;
 		}
 		if ((timercounter_d1000 & 0x02) == 0x02){
 			timercounter_d500 += 1;
-			x500hz_trigger = 1;
+			x500Hz_trigger = 1;
 		}
 		if (timercounter_d1000 == 5){
 			timercounter_d1000 = 0;
 			timercounter_d200 += 1;
-			x200hz_trigger = 1;
+			x200Hz_trigger = 1;
 		}
 		if ((timercounter_d200 & 0x02) == 0x02){
 			timercounter_d200 = 0;
 			timercounter_d100 += 1;
-			x100hz_trigger = 1;
+			x100Hz_trigger = 1;
 		}
 		if ((timercounter_d100 & 0x02) == 0x02){
 			timercounter_d50 += 1;
-			x50hz_trigger = 1;
+			x50Hz_trigger = 1;
 		}
 		if (timercounter_d100 == 5){
 			timercounter_d100 = 0;
 			timercounter_d20 += 1;
-			x20hz_trigger = 1;
+			x20Hz_trigger = 1;
 		}
 		if ((timercounter_d20 & 0x02) == 0x02){
 			timercounter_d20 = 0;
 			timercounter_d10 += 1;
-			x10hz_trigger = 1;
+			x10Hz_trigger = 1;
         }
 		if ((timercounter_d10 & 0x02) == 0x02){
 			timercounter_d5 += 1;
-			x5hz_trigger = 1;
+			x5Hz_trigger = 1;
 		}
 		if (timercounter_d10 == 5){
 			timercounter_d10 = 0;
 			timercounter_d2 += 1;
-			x2hz_trigger = 1;
+			x2Hz_trigger = 1;
 		}
 		if ((timercounter_d2 & 0x02) == 0x02){
 			timercounter_d2 = 0;
-			x1hz_trigger = 1;
+			x1Hz_trigger = 1;
         }
 	}
 }
