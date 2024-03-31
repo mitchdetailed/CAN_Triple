@@ -1,5 +1,5 @@
 /*
- * user_code.c
+ * user_code.c - All Code should be applied here unless specified otherwise.
  */
 
 /* File Includes */
@@ -8,7 +8,6 @@
 #include "main.h"
 
 /* End File Includes */
-
 
 /* Variable Declarations */
 uint32_t serialnumber;
@@ -20,17 +19,17 @@ uint32_t flashbaseaddr = 0x0800F800; // Start Address of last page of memory
 
 /* Startup Functions */
 void events_Startup(){
-	setCANBitrate(CAN_1,  500000);
-	setCANBitrate(CAN_2,  250000);
-	setCANBitrate(CAN_3, 1000000);
-	//setCAN_Termination(CAN_1, false);
+	setCANBitrate(CAN_1, 100000);
+	setCANBitrate(CAN_2, 100000);
+	//setCANBitrate(CAN_3, 100000);
 	setCAN_Termination(CAN_1,true);
 	setCAN_Termination(CAN_2, true);
-	setCAN_Termination(CAN_3, false);
+	//setCAN_Termination(CAN_3, true);
 	startCANbus(CAN_1);
 	startCANbus(CAN_2);
 	//startCANbus(CAN_3);
 }
+/* End Startup Functions */
 
 /* When a CAN Message is Received.... */
 void onReceive(CAN_Message Message){
@@ -38,13 +37,12 @@ void onReceive(CAN_Message Message){
 		add_to_CAN_TX_Queue(CAN_2, Message.is_extended_id, Message.arbitration_id, Message.dlc, Message.data);
 	}
 	if (Message.Bus == CAN_2){
-		//add_to_CAN_TX_Queue(CAN_Channel_1, EXT_ID, ID, DLC, Data);
-		// do nothing
+		// Do nothing
+
 	}
 	if (Message.Bus == CAN_3){
 		// Do Nothing...
 				
-
 	}
 }
 
@@ -75,7 +73,7 @@ void events_100Hz(){
 
 /* Run 50Hz Functions here */
 void events_50Hz(){
-	toggleLED(LED_1);
+	
 }
 
 /* Run 20Hz Functions here */
@@ -95,15 +93,15 @@ void events_5Hz(){
 
 /* Run 2Hz Functions here */
 void events_2Hz(){
-
+	toggleLED(LED_1);
 }
 
 /* Run 1Hz Functions here */
 void events_1Hz(){
-	//serialnumber = getSerialNumber();
-	//add_to_CAN_TX_Queue(0b111, false, 0x7FF, 8, example_data_1Hz);
-	//for (uint8_t i=0; i<8; i++){
-	//	example_data_1Hz[i]++;
-	//}
-
+	add_to_CAN_TX_Queue(CAN_1, false, 0x001, 8, example_data_1Hz);
+	add_to_CAN_TX_Queue(CAN_2, false, 0x002, 8, example_data_1Hz);
+	add_to_CAN_TX_Queue(CAN_3, false, 0x003, 8, example_data_1Hz);
+	for (uint8_t i=0; i<8; i++){
+		example_data_1Hz[i]++;
+	}
 }
