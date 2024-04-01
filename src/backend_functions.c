@@ -453,7 +453,7 @@ uint8_t add_to_CAN_RX_Queue(uint8_t enum_bus, bool EXT_ID, uint32_t ID, uint8_t 
 
 /* Add to CAN Transmit Queue
 CAN_1: 1, CAN_2: 2, CAN_3: 4 */
-uint8_t add_to_CAN_TX_Queue(uint8_t enum_bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t data[8]){
+uint8_t send_message(uint8_t enum_bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t data[8]){
 	uint8_t return_val = 0;
 	if((enum_bus & CAN_1) == CAN_1){
 		can1_Tx_qNextHead = (can1_Tx_qHead + 1) & (BUFFER_SIZE-1);
