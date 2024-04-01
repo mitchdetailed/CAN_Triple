@@ -34,7 +34,7 @@ void events_Startup(){
 /* When a CAN Message is Received.... */
 void onReceive(CAN_Message Message){
 	if (Message.Bus == CAN_1){
-		add_to_CAN_TX_Queue(CAN_2, Message.is_extended_id, Message.arbitration_id, Message.dlc, Message.data);
+		send_message(CAN_2, Message.is_extended_id, Message.arbitration_id, Message.dlc, Message.data);
 	}
 	if (Message.Bus == CAN_2){
 		// Do nothing
