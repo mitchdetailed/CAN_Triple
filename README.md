@@ -36,7 +36,7 @@ uint8_t setCAN_Termination(uint8_t enum_bus, bool activated);
 ---
 Adding a CAN bus message to the Transmit Queue : 
 ```C
-uint8_t add_to_CAN_TX_Queue(uint8_t enum_bus, bool EXT_ID, uint32_t ID, uint8_t DLC, uint8_t Data[8]);
+uint8_t send_message(uint8_t enum_bus, bool EXT_ID, uint32_t ID, uint8_t DLC, uint8_t Data[8]);
 // enum_bus will be the Bus Enumeration(s)..
 // EXT_ID will be a true or false value based on if your message ID is extended addressing or not..
 // ID will be the arbitration ID 0x0 - 0x7ff for Standard addressing, 0x0 - 0x 1FFFFFFF for Extended Addressing..
