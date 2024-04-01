@@ -11,6 +11,7 @@
 #include "backend_functions.h"
 #include "main.h"
 
+#define UID_BASE_ADDRESS       (0x1FFF7590UL)    /*!< Unique device ID register base address */
 
 extern FDCAN_HandleTypeDef hfdcan1;
 extern FDCAN_HandleTypeDef hfdcan2;
@@ -851,16 +852,19 @@ uint32_t calculateCRC32(uint8_t *data, size_t length, uint32_t polynomial, uint3
 }
 
 
-/* retrieve MCU Serial Number */
-uint32_t getSerialNumber(void){
-    uint8_t *serialnumberbase = (uint8_t *)0x1FFF7594;
-    uint32_t serialnumber = 0;
+/* retrieve MCU Serial Number 1 of 3 */
+uint32_t getSerialNumber1of3(void){
+return (uint32_t)(READ_REG(*((uint32_t *)UID_BASE_ADDRESS)));
+}
 
-    for (uint8_t i = 0; i < 4; i++){
-        serialnumber |= (uint32_t)serialnumberbase[i] << (8 * i);
-    }
+/* retrieve MCU Serial Number 2 of 3 */
+uint32_t getSerialNumber2of3(void){
+return (uint32_t)(READ_REG(*((uint32_t *)(UID_BASE_ADDRESS + 4U))));
+}
 
-    return serialnumber;
+/* retrieve MCU Serial Number 3 of 3 */
+uint32_t getSerialNumber3of3(void){
+return (uint32_t)(READ_REG(*((uint32_t *)(UID_BASE_ADDRESS + 8U))));
 }
 
 /* Get Readout Protection Level */
