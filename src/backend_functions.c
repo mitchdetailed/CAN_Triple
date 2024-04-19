@@ -190,7 +190,7 @@ return returnval;
 }
 
 /**
- * \brief Starts CANbus Bitrate
+ * \brief Starts CANbus
  *
  * \param enum_bus CAN_1, CAN_2, and/or CAN_3.
  * \return CAN_1, CAN_2, and/or CAN_3.
