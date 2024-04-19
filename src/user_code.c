@@ -32,7 +32,12 @@ void events_Startup(){
 }
 /* End Startup Functions */
 
-/* When a CAN Message is Received.... */
+/**
+ * \brief Handles the receipt of a CAN message.
+ * This function is called when a new CAN message is received.
+ *
+ * \param Message The CAN message that was received.
+ */
 void onReceive(CAN_Message Message){
 	if (Message.Bus == CAN_1){
 		send_message(CAN_2, Message.is_extended_id, Message.arbitration_id, Message.dlc, Message.data);

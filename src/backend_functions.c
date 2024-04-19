@@ -484,7 +484,7 @@ uint8_t add_to_CAN_RX_Queue(uint8_t enum_bus, bool EXT_ID, uint32_t ID, uint8_t 
  * \param arbitration_id Message ID.
  * \param dlc Data Length.
  * \param data Message data (8 Bytes).
- * \return CAN_1, CAN_2, and/or CAN_3 based on which buses message was applied to.
+ * \return CAN_1, CAN_2, and/or CAN_3  based on which buses message was applied to.
  */
 uint8_t send_message(uint8_t enum_bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t data[8]){
 	uint8_t return_val = 0;
@@ -1103,7 +1103,11 @@ char* read_char_array_from_address(const void* source, size_t length) {
     return dest;
 }
 
-/* Write LED Pin(s) on Board */
+/**
+ * \brief Writes OnBoard LED
+ * \param led_enum LED_1.
+ * \param high Boolean.
+ */
 void writeLED(uint8_t led_enum, bool high){
 	if(led_enum == LED_1){
 		HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10, high);

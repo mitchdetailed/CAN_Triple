@@ -16,12 +16,19 @@
 
 #define LED_1 1
 
+/**
+ * @brief Structure to represent a CAN network message.
+ * 
+ * This structure is used to hold all the necessary data for a CAN message,
+ * including its identifier, whether it is using an extended identifier,
+ * and the payload data.
+ */
 typedef struct {
-    uint8_t Bus;
-    bool is_extended_id;
-    uint32_t arbitration_id;
-    uint8_t dlc;
-    uint8_t data[8];
+    uint8_t Bus;             /**< ID of the CAN bus the message is associated with. */
+    bool is_extended_id;     /**< True if using an extended ID, false if using a standard ID. */
+    uint32_t arbitration_id; /**< The identifier for the message, either standard or extended based on is_extended_id. */
+    uint8_t dlc;             /**< Data length code, the number of valid bytes in the data field. */
+    uint8_t data[8];         /**< Data payload of the CAN message. */
 } CAN_Message;
 
 uint8_t setCANBitrate(uint8_t enum_bus, uint32_t mainBitrate);
