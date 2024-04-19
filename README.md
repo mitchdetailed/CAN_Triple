@@ -6,65 +6,102 @@ The CAN Triple is designed to simplify the scope of interfacing multiple CAN Bus
 
 Setting CAN Bitrate : 
 ```C
-uint8_t setCANBitrate(uint8_t enum_bus, uint32_t mainBitrate);
-// enum_bus will be the Bus Enumeration(s)..
-// mainBitrate will be the bitrate value in bits per second..
-// Return value = 0 if successful, else -1..
-```
----
-Starting CAN Bus(es) :
-```C
-uint8_t startCANbus(uint8_t enum_bus);
-// enum_bus will be the Bus Enumeration(s)..
-// Return value = 0 if successful, else -1..
-```
----
-Stopping CAN Bus(es) : 
-```C
-uint8_t stopCANbus(uint8_t enum_bus);
-// enum_bus will be the Bus Enumeration(s)..
-// Return value = 0 if successful, else -1..
+uint8_t setCANBitrate(uint8_t enum_bus, uint32_t mainBitrate)
+Sets CANbus Bitrate
+
+Parameters:
+enum_bus – CAN_1, CAN_2, and/or CAN_3.
+mainBitrate – Bitrate of CANbus in bits per second.
+
+Returns:
+CAN_1, CAN_2, and/or CAN_3.
 ```
 ---
 Setting internal 120 Ω Termination Resistor for CAN Bus(es) : 
 ```C
-uint8_t setCAN_Termination(uint8_t enum_bus, bool activated);
-// enum_bus will be the Bus Enumeration(s)..
-// activated will be true or false value based on if you want termination enabled..
-// Return value = 0 if successful, else -1..
+uint8_t setCAN_Termination(uint8_t enum_bus, bool activated)
+Enable or Disable CAN Termination across CANbuses
+
+Parameters:
+enum_bus – CAN_1, CAN_2, and/or CAN_3.
+
+Returns:
+CAN_1, CAN_2, and/or CAN_3 only if termination enabled.
+```
+---
+Starting CAN Bus(es) :
+```C
+uint8_t startCANbus(uint8_t enum_bus)
+Starts CANbus
+
+Parameters:
+enum_bus – CAN_1, CAN_2, and/or CAN_3.
+
+Returns:
+CAN_1, CAN_2, and/or CAN_3.
+```
+---
+Stopping CAN Bus(es) : 
+```C
+uint8_t stopCANbus(uint8_t enum_bus)
+Stops CANbus Bitrate
+
+Parameters:
+enum_bus – CAN_1, CAN_2, and/or CAN_3.
+
+Returns:
+CAN_1, CAN_2, and/or CAN_3.
 ```
 ---
 Adding a CAN bus message to the Transmit Queue : 
 ```C
-uint8_t send_message(uint8_t enum_bus, bool EXT_ID, uint32_t ID, uint8_t DLC, uint8_t Data[8]);
-// enum_bus will be the Bus Enumeration(s)..
-// EXT_ID will be a true or false value based on if your message ID is extended addressing or not..
-// ID will be the arbitration ID 0x0 - 0x7ff for Standard addressing, 0x0 - 0x 1FFFFFFF for Extended Addressing..
-// DLC will be the data length, 0-8..
-// Data[8] will be an 8 byte array of data for transmitting..
+uint8_t send_message(uint8_t enum_bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t *data)
+Sends message to Queue
+
+Parameters:
+enum_bus – CAN_1, CAN_2, and/or CAN_3.
+is_extended_id – True or False.
+arbitration_id – Message ID.
+dlc – Data Length.
+data – Message data (8 Bytes).
+
+Returns:
+CAN_1, CAN_2, and/or CAN_3
 ```
 ---
 Turning GPIO LED on/off : 
 ```C
-void writeLED(uint8_t LED_int, bool high);
-// led_enum will be the LED Enumeration(s)..
-// high will be a true or false value for setting on or off..
+void writeLED(uint8_t led_enum, bool high)
+Writes OnBoard LED
+
+Parameters:
+led_enum – LED_1.
+high – Boolean.
 ```
 ---
 Toggling GPIO LED : 
 ```C
-void writeLED(uint8_t LED_int);
-// led_enum will be the LED Enumeration(s)..
+void toggleLED(uint8_t led_enum)
+Toggles OnBoard LED
+
+Parameters:
+led_enum – LED_1.
 ```
 ---
 Managing Received CAN Messages : 
 ```C
-void onReceive(CAN_Message);
-// the CAN_Message struct will contain the following items :
----    uint8_t Bus; // will be the Bus Enumeration.
----    bool is_extended_id; // will be 
----    uint32_t arbitration_id;
----    uint8_t dlc;
----    uint8_t data[8];
+void onReceive(CAN_Message)
+Handles the receipt of a CAN message. This function is called when a new CAN message is received.
+
+Parameters:
+Message – The CAN message that was received.
+typedef struct {
+    uint8_t Bus;             /**< ID of the CAN bus the message is associated with. */
+    bool is_extended_id;     /**< True if using an extended ID, false if using a standard ID. */
+    uint32_t arbitration_id; /**< The identifier for the message, either standard or extended based on is_extended_id. */
+    uint8_t dlc;             /**< Data length code, the number of valid bytes in the data field. */
+    uint8_t data[8];         /**< Data payload of the CAN message. */
+} CAN_Message;
+
 // we'll define the CAN_Message and call each field using the [dot] operator.
 
