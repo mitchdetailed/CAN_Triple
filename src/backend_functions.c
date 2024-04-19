@@ -786,8 +786,8 @@ uint8_t resetCAN(uint8_t enum_bus){
 /**
  * \brief horizontally flips 1byte of data
  *
- * \param data u8 data
- * \return flipped u8 data.
+ * \param data U8 data
+ * \return flipped U8 data.
  */
 uint8_t reflect8(uint8_t data){
     uint8_t reflection = 0;
@@ -804,9 +804,9 @@ uint8_t reflect8(uint8_t data){
  *
  * \param data pointer to data.
  * \param length length of array.
- * \param polynomial u8 polynomial.
- * \param crcInit u8 initializer.
- * \param finalXor u8 final XOR.
+ * \param polynomial U8 polynomial.
+ * \param crcInit U8 initializer.
+ * \param finalXor U8 final XOR.
  * \param reflectInput Boolean reflect the input.
  * \param reflectOutput Boolean reflect the output.
  * \return CRC Value
@@ -926,11 +926,60 @@ uint32_t calculateCRC32(uint8_t *data, size_t length, uint32_t polynomial, uint3
     return (crc ^ finalXor);
 }
 
+/**
+ * \brief Round a floating point value to X decimal places. --
+ * Example : roundFloat(3.1415927654, 2); --
+ * Returns : 3.14
+ * \param num F32 number
+ * \param places Decimal place Count
+ * \return F32 Rounded value
+ */
+float roundFloat(float num, uint8_t places) {
+    float scale = 1;
+    for (int i = 0; i < places; i++) {
+        scale *= 10;
+    }
+
+    if (num >= 0) {
+        return (int)(num * scale + 0.5) / scale;
+    } else {
+        return (int)(num * scale - 0.5) / scale;
+    }
+}
+
+/**
+ * \brief Round a floating point value to X decimal places and then decimal shift X decimal places. -- 
+ * Example : roundAndPrepare(3.1415927654, 2); --
+ * Returns : 314
+ * \param num F32 number
+ * \param places Decimal place Count
+ *
+ * \return I32 Rounded value
+ */
+int32_t roundAndPrepare(float num, uint8_t decimal_places) {
+    float scale = 1.0;
+    for (uint8_t i = 0; i < decimal_places; i++) {
+        scale *= 10.0;
+    }
+
+    // Round the number to the nearest decimal place.
+    float rounded;
+    if (num >= 0) {
+        rounded = (int)(num * scale + 0.5);
+    } else {
+        rounded = (int)(num * scale - 0.5);
+    }
+
+    // Multiply by 10^decimal_places to shift the decimal point.
+    // Convert the result to int32_t before returning.
+    return (int32_t)(rounded * scale);
+}
+
 
 /**
  * \brief Gets Unique Serial Number of MCU.
  *
- * \return Serial Number
+ * \return Serial Number of MCU
  */
 uint32_t getSerialNumber(void){
 return (uint32_t)(READ_REG(*((uint32_t *)UID_BASE_ADDRESS)));

@@ -47,6 +47,9 @@ uint8_t calculateCRC8(uint8_t *data, size_t length, uint8_t polynomial, uint8_t 
 uint16_t calculateCRC16(uint8_t *data, size_t length, uint16_t polynomial, uint16_t crcInit, uint16_t finalXor, bool reflectInput, bool reflectOutput);
 uint32_t calculateCRC32(uint8_t *data, size_t length, uint32_t polynomial, uint32_t crcInit, uint32_t finalXor, bool reflectInput, bool reflectOutput);
 
+float roundFloat(float num, uint8_t places);
+int32_t roundAndPrepare(float num, uint8_t decimal_places);
+
 uint32_t getSerialNumber(void);
 uint8_t getRDP(void);
 uint8_t setRDP(bool on);
