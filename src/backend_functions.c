@@ -103,6 +103,15 @@ bool storecompleted = false;
 /* Sets CANbus Bitrate
 CAN_1: 1, CAN_2: 2, CAN_3: 4
 1M,500k,250k,125k validated */
+
+
+/**
+ * \brief Sets CANbus Bitrate
+ *
+ * \param enum_bus CAN_1, CAN_2, and/or CAN_3.
+ * \param mainBitrate Bitrate of CANbus in bits per second.
+ * \return CAN_1, CAN_2, and/or CAN_3.
+ */
 uint8_t setCANBitrate(uint8_t enum_bus, uint32_t mainBitrate){
 	uint8_t returnval = 0;
 	uint32_t apb1clock = HAL_RCC_GetPCLK1Freq();
@@ -128,7 +137,7 @@ uint8_t setCANBitrate(uint8_t enum_bus, uint32_t mainBitrate){
 		hfdcan1.Init.ExtFiltersNbr = 0;
 		hfdcan1.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
 		if (HAL_FDCAN_Init(&hfdcan1) != HAL_OK){
-		    returnval += 1;
+		    returnval += CAN_1;
 		}
 	}
 	if ((enum_bus & CAN_2) == CAN_2){
@@ -151,7 +160,7 @@ uint8_t setCANBitrate(uint8_t enum_bus, uint32_t mainBitrate){
 		hfdcan2.Init.ExtFiltersNbr = 0;
 		hfdcan2.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
 		if (HAL_FDCAN_Init(&hfdcan2) != HAL_OK){
-		    returnval += 2;
+		    returnval += CAN_2;
 		}
 	}
 	if ((enum_bus & CAN_3) == CAN_3){
@@ -174,14 +183,18 @@ uint8_t setCANBitrate(uint8_t enum_bus, uint32_t mainBitrate){
 		hfdcan3.Init.ExtFiltersNbr = 0;
 		hfdcan3.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
 		if (HAL_FDCAN_Init(&hfdcan3) != HAL_OK){
-		    returnval += 4;
+		    returnval += CAN_3;
 		}
 	}
 return returnval;
 }
 
-/* Start CAN Bus
-CAN_1: 1, CAN_2: 2, CAN_3: 4 */
+/**
+ * \brief Starts CANbus Bitrate
+ *
+ * \param enum_bus CAN_1, CAN_2, and/or CAN_3.
+ * \return CAN_1, CAN_2, and/or CAN_3.
+ */
 uint8_t startCANbus(uint8_t enum_bus){
 	uint8_t groupval = 0;
 	uint8_t returnval = 0;
@@ -197,8 +210,8 @@ uint8_t startCANbus(uint8_t enum_bus){
 		if (HAL_FDCAN_Start(&hfdcan1) != HAL_OK){
 			groupval += 4;
 		}
-		if (groupval != 0){
-			returnval += 1;
+		if (groupval == 7){
+			returnval += CAN_1;
 		}
 	}
 	groupval = 0;
@@ -213,8 +226,8 @@ uint8_t startCANbus(uint8_t enum_bus){
 		if (HAL_FDCAN_Start(&hfdcan2) != HAL_OK){
 			groupval += 4;
 		}
-		if (groupval != 0){
-			returnval += 2;
+		if (groupval == 7){
+			returnval += CAN_2;
 		}
 	}
 	groupval = 0;
@@ -229,15 +242,19 @@ uint8_t startCANbus(uint8_t enum_bus){
 		if (HAL_FDCAN_Start(&hfdcan3) != HAL_OK){
 			groupval += 4;
 		}
-		if (groupval != 0){
-			returnval += 2;
+		if (groupval == 7){
+			returnval += CAN_3;
 		}
 	}
 	return returnval;
 }
 
-/* Stop CAN Bus
-CAN_1: 1, CAN_2: 2, CAN_3: 4 */
+/**
+ * \brief Stops CANbus Bitrate
+ *
+ * \param enum_bus CAN_1, CAN_2, and/or CAN_3.
+ * \return CAN_1, CAN_2, and/or CAN_3.
+ */
 uint8_t stopCANbus(uint8_t enum_bus){
 	uint8_t returnval = 0;
 
@@ -257,28 +274,34 @@ uint8_t stopCANbus(uint8_t enum_bus){
 		*/
 	if ((enum_bus & CAN_1) == CAN_1){
 		if (HAL_FDCAN_Stop(&hfdcan1) != HAL_OK){
-			returnval += 1;
+			returnval += CAN_1;
 		}
 	}
 	if ((enum_bus & CAN_2) == CAN_2){
 		if (HAL_FDCAN_Stop(&hfdcan2) != HAL_OK){
-			returnval += 2;
+			returnval += CAN_2;
 		}
 	}
 	if ((enum_bus & CAN_3) == CAN_3){
 		if (HAL_FDCAN_Stop(&hfdcan3) != HAL_OK){
-			returnval += 4;
+			returnval += CAN_3;
 		}
 	}
 	return returnval;
 }
 
-/* Set/Reset CAN Termination
-CAN_1: 1, CAN_2: 2, CAN_3: 4 */
+/**
+ * \brief Enable or Disable CAN Termination across CANbuses
+ *
+ * \param enum_bus CAN_1, CAN_2, and/or CAN_3.
+ * \return CAN_1, CAN_2, and/or CAN_3 only if termination enabled.
+ */
 uint8_t setCAN_Termination(uint8_t enum_bus, bool activated){
+	uint8_t returnval = 0;
 	if ((enum_bus & CAN_1) == CAN_1){
 		if (activated == true){
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, 1);
+			returnval += CAN_1;
 		}
 		else{
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, 0);
@@ -287,6 +310,7 @@ uint8_t setCAN_Termination(uint8_t enum_bus, bool activated){
 	if ((enum_bus & CAN_2) == CAN_2){
 		if (activated == true){
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 1);
+			returnval +=CAN_2;
 		}
 		else{
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 0);
@@ -295,6 +319,7 @@ uint8_t setCAN_Termination(uint8_t enum_bus, bool activated){
 	if ((enum_bus & CAN_3) == CAN_3){
 		if (activated == true){
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, 1);
+			returnval +=CAN_3;
 		}
 		else{
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, 0);
@@ -451,8 +476,16 @@ uint8_t add_to_CAN_RX_Queue(uint8_t enum_bus, bool EXT_ID, uint32_t ID, uint8_t 
 	return return_val;
 }
 
-/* Add to CAN Transmit Queue
-CAN_1: 1, CAN_2: 2, CAN_3: 4 */
+/**
+ * \brief Sends message to Queue
+ *
+ * \param enum_bus CAN_1, CAN_2, and/or CAN_3.
+ * \param is_extended_id True or False.
+ * \param arbitration_id Message ID.
+ * \param dlc Data Length.
+ * \param data Message data (8 Bytes).
+ * \return CAN_1, CAN_2, and/or CAN_3 based on which buses message was applied to.
+ */
 uint8_t send_message(uint8_t enum_bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t data[8]){
 	uint8_t return_val = 0;
 	if((enum_bus & CAN_1) == CAN_1){
@@ -693,8 +726,12 @@ void HAL_FDCAN_ErrorStatusCallback(FDCAN_HandleTypeDef *hfdcan, uint32_t ErrorSt
 	}
 }
 
-/* Resets CAN network(s)
-CAN_1: 1, CAN_2: 2, CAN_3: 4 */
+/**
+ * \brief Resets CANbus
+ *
+ * \param enum_bus CAN_1, CAN_2, and/or CAN_3.
+ * \return CAN_1, CAN_2, and/or CAN_3.
+ */
 uint8_t resetCAN(uint8_t enum_bus){
 	uint8_t groupval = 0;
 	uint8_t returnval = 0;
@@ -708,8 +745,8 @@ uint8_t resetCAN(uint8_t enum_bus){
 				groupval += 2;
 			}
 		}
-		if (groupval != 0){
-			returnval += 1;
+		if (groupval == 3){
+			returnval += CAN_1;
 		}
 	groupval = 0;
 	}
@@ -723,8 +760,8 @@ uint8_t resetCAN(uint8_t enum_bus){
 				groupval += 2;
 			}
 		}
-		if (groupval != 0){
-			returnval += 2;
+		if (groupval == 3){
+			returnval += CAN_2;
 		}
 	groupval = 0;
 	}
@@ -738,15 +775,20 @@ uint8_t resetCAN(uint8_t enum_bus){
 				groupval += 2;
 			}
 		}
-		if (groupval != 0){
-			returnval += 4;
+		if (groupval == 3){
+			returnval += CAN_3;
 		}
 	}
 	return returnval;
 }
 
 
-/* reflect8 function */
+/**
+ * \brief horizontally flips 1byte of data
+ *
+ * \param data u8 data
+ * \return flipped u8 data.
+ */
 uint8_t reflect8(uint8_t data){
     uint8_t reflection = 0;
     for (uint8_t i = 0; i < 8; ++i){
@@ -757,7 +799,18 @@ uint8_t reflect8(uint8_t data){
     return reflection;
 }
 
-/* calculate CRC8 function */
+/**
+ * \brief Calculates CRC8 Checksum
+ *
+ * \param data pointer to data.
+ * \param length length of array.
+ * \param polynomial u8 polynomial.
+ * \param crcInit u8 initializer.
+ * \param finalXor u8 final XOR.
+ * \param reflectInput Boolean reflect the input.
+ * \param reflectOutput Boolean reflect the output.
+ * \return CRC Value
+ */
 uint8_t calculateCRC8(uint8_t *data, size_t length, uint8_t polynomial, uint8_t crcInit, uint8_t finalXor, bool reflectInput, bool reflectOutput){
     uint8_t crc = crcInit;
     for (size_t i = 0; i < length; ++i){
@@ -792,7 +845,18 @@ uint16_t reflect16(uint16_t data){
     return reflection;
 }
 
-/* calculate CRC16 function */
+/**
+ * \brief Calculates CRC16 Checksum
+ *
+ * \param data pointer to data.
+ * \param length length of array.
+ * \param polynomial u16 polynomial.
+ * \param crcInit u16 initializer.
+ * \param finalXor u16 final XOR.
+ * \param reflectInput Boolean reflect the input.
+ * \param reflectOutput Boolean reflect the output.
+ * \return CRC Value
+ */
 uint16_t calculateCRC16(uint8_t *data, size_t length, uint16_t polynomial, uint16_t crcInit, uint16_t finalXor, bool reflectInput, bool reflectOutput){
     uint16_t crc = crcInit;
     for (size_t i = 0; i < length; ++i){
@@ -827,7 +891,18 @@ uint32_t reflect32(uint32_t data){
     return reflection;
 }
 
-/* calculate CRC32 function */
+/**
+ * \brief Calculates CRC32 Checksum
+ *
+ * \param data pointer to data.
+ * \param length length of array.
+ * \param polynomial u32 polynomial.
+ * \param crcInit u32 initializer.
+ * \param finalXor u32 final XOR.
+ * \param reflectInput Boolean reflect the input.
+ * \param reflectOutput Boolean reflect the output.
+ * \return CRC Value
+ */
 uint32_t calculateCRC32(uint8_t *data, size_t length, uint32_t polynomial, uint32_t crcInit, uint32_t finalXor, bool reflectInput, bool reflectOutput){
     uint32_t crc = crcInit;
     for (size_t i = 0; i < length; ++i){
@@ -852,22 +927,20 @@ uint32_t calculateCRC32(uint8_t *data, size_t length, uint32_t polynomial, uint3
 }
 
 
-/* retrieve MCU Serial Number 1 of 3 */
-uint32_t getSerialNumber1of3(void){
+/**
+ * \brief Gets Unique Serial Number of MCU.
+ *
+ * \return Serial Number
+ */
+uint32_t getSerialNumber(void){
 return (uint32_t)(READ_REG(*((uint32_t *)UID_BASE_ADDRESS)));
 }
 
-/* retrieve MCU Serial Number 2 of 3 */
-uint32_t getSerialNumber2of3(void){
-return (uint32_t)(READ_REG(*((uint32_t *)(UID_BASE_ADDRESS + 4U))));
-}
-
-/* retrieve MCU Serial Number 3 of 3 */
-uint32_t getSerialNumber3of3(void){
-return (uint32_t)(READ_REG(*((uint32_t *)(UID_BASE_ADDRESS + 8U))));
-}
-
-/* Get Readout Protection Level */
+/**
+ * \brief Gets MCU Readout Protection Level.
+ *
+ * \return 0 : Unlocked, 1 : Locked, 2 : Locked Indefinetely
+ */
 uint8_t getRDP(void){
 	uint32_t optionbytes = 0xFBFFFCAA;
 	uint8_t rdp_val = 0;
@@ -884,7 +957,12 @@ uint8_t getRDP(void){
 	}
 	return rdplevel;
 }
-/* Set Readout Protection - !Disables debugging! */
+/**
+ * \brief Sets Readout Protection Level.
+ * \note Setting Readout Protection disables debugging..
+ *
+ * \return 0 : Unlocked or no change, 1 : Locked
+ */
 uint8_t setRDP(bool on){
 	uint8_t returnval = 0;
 	uint8_t level = getRDP();
@@ -898,6 +976,7 @@ uint8_t setRDP(bool on){
 		HAL_FLASH_OB_Launch();
 		HAL_FLASH_OB_Lock();
 		HAL_FLASH_Lock();
+		returnval = 1;
 	}
 	else if ((level != 0) & (on == false)){
 		HAL_FLASH_Unlock();
@@ -909,6 +988,7 @@ uint8_t setRDP(bool on){
 		HAL_FLASH_OB_Launch();
 		HAL_FLASH_OB_Lock();
 		HAL_FLASH_Lock();
+		returnval = 0;
 	}
 	return returnval;
 }
@@ -981,7 +1061,10 @@ void writeLED(uint8_t led_enum, bool high){
 	}
 }
 
-/* Toggle LED Pin(s) on Board */
+/**
+ * \brief Toggles OnBoard LED
+ * \param led_enum LED_1.
+ */
 void toggleLED(uint8_t led_enum){
 	if(led_enum == LED_1){
 		HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_10);

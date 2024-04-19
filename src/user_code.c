@@ -11,11 +11,7 @@
 
 /* Variable Declarations */
 uint8_t example_data_1Hz[8] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08};
-uint32_t sn1 = 0;
-uint32_t sn2 = 0;
-uint32_t sn3 = 0;
-//uint8_t rdp_Level = 0;
-//uint32_t flashbaseaddr = 0x0800F800; // Start Address of last page of memory
+uint32_t serial = 0;
 
 /* End Variable Declarations */
 
@@ -27,12 +23,11 @@ void events_Startup(){
 	setCAN_Termination(CAN_1,true);
 	setCAN_Termination(CAN_2, true);
 	setCAN_Termination(CAN_3, true);
-	//startCANbus(CAN_1);
-	//startCANbus(CAN_2);
-	//startCANbus(CAN_3);
-	sn1 = getSerialNumber1of3();
-	sn2 = getSerialNumber2of3();
-	sn3 = getSerialNumber3of3();
+	startCANbus(CAN_1);
+	startCANbus(CAN_2);
+	startCANbus(CAN_3);
+	serial = getSerialNumber();
+
 
 }
 /* End Startup Functions */
@@ -43,11 +38,10 @@ void onReceive(CAN_Message Message){
 		send_message(CAN_2, Message.is_extended_id, Message.arbitration_id, Message.dlc, Message.data);
 	}
 	if (Message.Bus == CAN_2){
-		// Do nothing
-
+		send_message(CAN_3, Message.is_extended_id, Message.arbitration_id, Message.dlc, Message.data);
 	}
 	if (Message.Bus == CAN_3){
-		// Do Nothing...
+		send_message(CAN_1, Message.is_extended_id, Message.arbitration_id, Message.dlc, Message.data);
 				
 	}
 }
@@ -104,10 +98,10 @@ void events_2Hz(){
 
 /* Run 1Hz Functions here */
 void events_1Hz(){
-	//send_message(CAN_1, false, 0x001, 8, example_data_1Hz);
-	//send_message(CAN_2, false, 0x002, 8, example_data_1Hz);
-	//send_message(CAN_3, false, 0x003, 8, example_data_1Hz);
-	//for (uint8_t i=0; i<8; i++){
-	//	example_data_1Hz[i]++;
-	//}
+	send_message(CAN_1, false, 0x001, 8, example_data_1Hz);
+	send_message(CAN_2, false, 0x002, 8, example_data_1Hz);
+	send_message(CAN_3, false, 0x003, 8, example_data_1Hz);
+	for (uint8_t i=0; i<8; i++){
+		example_data_1Hz[i]++;
+	}
 }

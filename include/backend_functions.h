@@ -25,7 +25,7 @@ typedef struct {
 } CAN_Message;
 
 uint8_t setCANBitrate(uint8_t enum_bus, uint32_t mainBitrate);
-uint8_t setCANFDBitrate(uint8_t enum_bus, uint32_t mainBitrate, uint32_t dataBitrate, bool bitrateSwitch);
+//uint8_t setCANFDBitrate(uint8_t enum_bus, uint32_t mainBitrate, uint32_t dataBitrate, bool bitrateSwitch);
 uint8_t startCANbus(uint8_t enum_bus);
 uint8_t stopCANbus(uint8_t enum_bus);
 uint8_t setCAN_Termination(uint8_t enum_bus, bool activated);
@@ -47,9 +47,7 @@ uint8_t calculateCRC8(uint8_t *data, size_t length, uint8_t polynomial, uint8_t 
 uint16_t calculateCRC16(uint8_t *data, size_t length, uint16_t polynomial, uint16_t crcInit, uint16_t finalXor, bool reflectInput, bool reflectOutput);
 uint32_t calculateCRC32(uint8_t *data, size_t length, uint32_t polynomial, uint32_t crcInit, uint32_t finalXor, bool reflectInput, bool reflectOutput);
 
-uint32_t getSerialNumber1of3(void);
-uint32_t getSerialNumber2of3(void);
-uint32_t getSerialNumber3of3(void);
+uint32_t getSerialNumber(void);
 uint8_t getRDP(void);
 uint8_t setRDP(bool on);
 uint8_t read_uint8_t_from_address(void* address);
