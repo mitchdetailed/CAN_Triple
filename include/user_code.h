@@ -5,7 +5,7 @@
 
 #ifndef INC_USER_CODE_H_
 #define INC_USER_CODE_H_
-#define BUFFER_SIZE 256 // Must Be incremented by a factor of 2. eg.(4,8,16,32,64,..,256)
+#define BUFFER_SIZE 256 /**< Must Be incremented by a factor of 2. eg.(4,8,16,32,64,..,256) */
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>

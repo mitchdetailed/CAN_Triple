@@ -41,6 +41,13 @@ uint8_t add_to_CAN_RX_Queue(uint8_t enum_bus, bool EXT_ID, uint32_t ID, uint8_t 
 uint8_t send_message(uint8_t enum_bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t data[8]);
 void trigger_CAN_RX(void);
 void trigger_CAN_TX(void);
+
+/**
+ * \brief Handles the receipt of a CAN message.
+ * This function is called when a new CAN message is received.
+ *
+ * \param Message The CAN message that was received.
+ */
 void onReceive(CAN_Message);
 void writeLED(uint8_t LED_int, bool high);
 void toggleLED(uint8_t LED_int);
