@@ -8,6 +8,7 @@
 #include "main.h"
 
 /* End File Includes */
+extern UART_HandleTypeDef huart1;
 
 /* Variable Declarations */
 uint8_t example_data_1Hz[8] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08};
@@ -104,4 +105,7 @@ void events_1Hz(){
 	for (uint8_t i=0; i<8; i++){
 		example_data_1Hz[i]++;
 	}
+    uint8_t string1[16] = "Hello World\r\n";
+	HAL_UART_Transmit(&huart1,string1, (uint16_t) 16, 10);
+
 }
