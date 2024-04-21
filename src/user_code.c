@@ -6,6 +6,7 @@
 #include "user_code.h"
 #include "backend_functions.h"
 #include "main.h"
+#include <stdio.h>
 
 /* End File Includes */
 extern UART_HandleTypeDef huart1;
@@ -105,7 +106,8 @@ void events_1Hz(){
 	for (uint8_t i=0; i<8; i++){
 		example_data_1Hz[i]++;
 	}
-    uint8_t string1[16] = "Hello World\r\n";
-	HAL_UART_Transmit(&huart1,string1, (uint16_t) 16, 10);
+    float string1 = 3.141592 ;
+
+	printf("testing %2.6f !\r\n", string1);
 
 }
