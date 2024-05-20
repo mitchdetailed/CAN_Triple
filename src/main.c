@@ -201,7 +201,7 @@ int main(void)
 		  x1Hz_trigger = 0;
 		  events_1Hz();
 	  }
-    transmit_arrays();
+    tx_Serial_Comms();
 
     /* USER CODE END WHILE */
 

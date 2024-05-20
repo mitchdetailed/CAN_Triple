@@ -1189,7 +1189,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 	
 }
 
-void push_string(const char* str) {
+void serialPrint(const char* str) {
 	uint16_t str_length = strlen(str);
     if (uart_array == 0) {
         if (array0.length + str_length < UART_ARRAY_LEN) {
@@ -1214,7 +1214,7 @@ void push_string(const char* str) {
 }
 
 
-void transmit_arrays() {
+void tx_Serial_Comms() {
 	if (uart_sending == false){
 		if (uart_array == 0 && array0.length > 0){
 			uart_array ^=1;

@@ -6,7 +6,9 @@
 #include "user_code.h"
 #include "backend_functions.h"
 #include "main.h"
+#include "snprintf.h"
 #include <string.h>
+
 //#include <stdio.h>
 
 /* End File Includes */
@@ -104,8 +106,8 @@ void events_20Hz(){
 /* Run 10Hz Functions here */
 void events_10Hz(){
 	toggleLED(LED_1);
-	push_string("LED Toggled...\r\n");
-	push_string("Testing pushing 2 strings\r\n");
+	//serialPrint("LED Toggled...\r\n");
+	//serialPrint("Testing pushing 2 strings\r\n");
 
 }
 
@@ -127,11 +129,16 @@ void events_1Hz(){
 	for (uint8_t i=0; i<8; i++){
 		example_data_1Hz[i]++;
 	}
-
+	double testfloat = 123.456789123;
+	char buffer[16];
+    //snprintf(buffer, sizeof(buffer), "%3.9f\r\n", testfloat);
+	//sprintf(buffer, "%3.9f\r\n", testfloat);
+	//serialPrint(buffer);
+	//printf("Hello World..\r\n");
 	//uint8_t u8Decimal = 123 ;
     //float floatval = 3.141592 ;
 	//uint8_t hw[13] = "Hello World!"; // Make sure there's 1 + total length of string for the buffer to NULL Terminate.
 	//printf("This is my float: %2.6f , this is my u8 %u , %s\r\n", floatval, u8Decimal, hw);
 	//HAL_UART_Transmit_DMA(&huart1, )
-	push_string("Hello World\r\n");
+	//serialPrint("Hello World\r\n");
 }
