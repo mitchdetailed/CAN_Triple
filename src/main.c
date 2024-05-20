@@ -201,6 +201,7 @@ int main(void)
 		  x1Hz_trigger = 0;
 		  events_1Hz();
 	  }
+    transmit_arrays();
 
     /* USER CODE END WHILE */
 

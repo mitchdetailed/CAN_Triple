@@ -130,5 +130,6 @@ void events_1Hz(){
     //float floatval = 3.141592 ;
 	//uint8_t hw[13] = "Hello World!"; // Make sure there's 1 + total length of string for the buffer to NULL Terminate.
 	//printf("This is my float: %2.6f , this is my u8 %u , %s\r\n", floatval, u8Decimal, hw);
-	
+	//HAL_UART_Transmit_DMA(&huart1, )
+	push_string("Hello World");
 }

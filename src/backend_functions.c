@@ -99,7 +99,10 @@ uint8_t CAN3_TxData[8];
 CAN_Message message;
 bool storecompleted = false;
 
-volatile uint8_t uart_tx_ready = 1;
+StringArray array0 = { .array = {0}, .length = 0 };
+StringArray array1 = { .array = {0}, .length = 0 };
+uint8_t uart_array = 0;
+bool uart_sending = false;
 
 /* Sets CANbus Bitrate
 CAN_1: 1, CAN_2: 2, CAN_3: 4
@@ -1173,6 +1176,55 @@ void writeFlash(uint32_t page, uint8_t *Data, uint16_t dataSize){
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
-	uart_tx_ready = 1;
+	if (uart_array == 0){
+		memset(array1.array, 0, sizeof(array1.array));
+		array1.length = 0;
+		uart_sending = false;
+	}
+	else if (uart_array == 1){
+		memset(array0.array, 0, sizeof(array0.array));
+		array0.length = 0;
+		uart_sending = false;
+	}
+	
 }
 
+void push_string(const char* str) {
+	uint16_t str_length = strlen(str);
+    if (uart_array == 0) {
+        if (array0.length + str_length < UART_ARRAY_LEN) {
+            memcpy(&array0.array[array0.length], str, str_length);
+            array0.length += str_length;
+        } else {
+            // Handle overflow, e.g., log error
+            //printf("Array 0 overflow\n");
+        }
+    } else if (uart_array == 1) {
+        if (array1.length + str_length < UART_ARRAY_LEN) {
+            memcpy(&array1.array[array1.length], str, str_length);
+            array1.length += str_length;
+        } else {
+            // Handle overflow, e.g., log error
+            //printf("Array 1 overflow\n");
+        }
+    } else {
+        // Handle invalid array_selector, e.g., log error
+        //printf("Invalid array selector\n");
+    }
+}
+
+
+void transmit_arrays() {
+	if (uart_sending == false){
+		if (uart_array == 0 && array0.length > 0){
+			uart_array ^=1;
+			uart_sending = true;
+			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)array0.array, array0.length);
+		}
+		else if (uart_array == 1 && array1.length > 0){
+			uart_array ^=1;
+			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)array1.array, array1.length);
+			
+		}
+	}
+}

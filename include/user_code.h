@@ -6,8 +6,8 @@
 #ifndef INC_USER_CODE_H_
 #define INC_USER_CODE_H_
 #define BUFFER_SIZE 256                 /**< Must Be incremented by a factor of 2. eg.(4,8,16,32,64,..,256) */
-//#define UART_DEBUG_BAUDRATE 115200    /** Default UART Debug Speed*/
-#define UART_DEBUG_BAUDRATE 7372800      /** Maximum Teleplot Plugin UART Debug Speed*/
+#define UART_DEBUG_BAUDRATE 115200    /** Default UART Debug Speed*/
+//#define UART_DEBUG_BAUDRATE 7372800      /** Maximum Teleplot Plugin UART Debug Speed*/
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>

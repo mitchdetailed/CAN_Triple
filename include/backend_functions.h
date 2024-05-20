@@ -19,7 +19,7 @@
 #define LED_1                   1
 
 #define UID_BASE_ADDRESS        (0x1FFF7590UL)    /*!< Unique device ID register base address */
-
+#define UART_ARRAY_LEN               1024
 /**
  * @brief Structure to represent a CAN network message.
  * 
@@ -35,6 +35,14 @@ typedef struct {
     uint8_t data[8];         /**< Data payload of the CAN message. */
 } CAN_Message;
 
+typedef struct {
+    char array[UART_ARRAY_LEN];
+    uint16_t length;
+} StringArray;
+
+extern StringArray array0;
+extern StringArray array1;
+extern uint8_t uart_array;
 
 UART_HandleTypeDef huart1;
 
@@ -83,5 +91,8 @@ uint32_t read_uint32_t_from_address(void* address);
 int32_t read_int32_t_from_address(void* address);
 float read_float_from_address(void* address);
 char* read_char_array_from_address(const void* source, size_t length);
+
+void push_string(const char* str);
+void transmit_arrays();
 
 #endif // INC_BACKEND_FUNCTIONS_H_
