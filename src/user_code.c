@@ -6,7 +6,8 @@
 #include "user_code.h"
 #include "backend_functions.h"
 #include "main.h"
-#include <stdio.h>
+#include <string.h>
+//#include <stdio.h>
 
 /* End File Includes */
 extern UART_HandleTypeDef huart1;
@@ -96,7 +97,7 @@ void events_50Hz(){
 
 /* Run 20Hz Functions here */
 void events_20Hz(){
-	printf(">Engine Speed:%04d %s\r\n", test_rpm, test_rpm_unit);
+	//printf(">Engine Speed:%04d %s\r\n", test_rpm, test_rpm_unit);
 
 }
 
@@ -125,9 +126,9 @@ void events_1Hz(){
 		example_data_1Hz[i]++;
 	}
 
-	uint8_t u8Decimal = 123 ;
-    float floatval = 3.141592 ;
-	uint8_t hw[13] = "Hello World!"; // Make sure there's 1 + total length of string for the buffer to NULL Terminate.
-	printf("This is my float: %2.6f , this is my u8 %u , %s\r\n", floatval, u8Decimal, hw);
-
+	//uint8_t u8Decimal = 123 ;
+    //float floatval = 3.141592 ;
+	//uint8_t hw[13] = "Hello World!"; // Make sure there's 1 + total length of string for the buffer to NULL Terminate.
+	//printf("This is my float: %2.6f , this is my u8 %u , %s\r\n", floatval, u8Decimal, hw);
+	
 }

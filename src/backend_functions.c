@@ -3,7 +3,7 @@
  *
  */
 
-#include <stdio.h>
+//#include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,7 +11,6 @@
 #include "backend_functions.h"
 #include "main.h"
 
-#define UID_BASE_ADDRESS       (0x1FFF7590UL)    /*!< Unique device ID register base address */
 
 extern FDCAN_HandleTypeDef hfdcan1;
 extern FDCAN_HandleTypeDef hfdcan2;
@@ -99,6 +98,8 @@ uint8_t CAN3_TxData[8];
 
 CAN_Message message;
 bool storecompleted = false;
+
+volatile uint8_t uart_tx_ready = 1;
 
 /* Sets CANbus Bitrate
 CAN_1: 1, CAN_2: 2, CAN_3: 4
@@ -1052,7 +1053,7 @@ void init_PVD(){
 }
 
 void HAL_PWR_PVDCallback(){
-	events_Shutdown();
+	//events_Shutdown();
 }
 
 /* Read 8 bit unsigned value from address */
@@ -1094,7 +1095,6 @@ float read_float_from_address(void* address) {
 char* read_char_array_from_address(const void* source, size_t length) {
     char* dest = malloc(length * sizeof(char));
     if (dest == NULL) {
-        perror("Failed to allocate memory");
         return NULL; // Allocation failed
     }
 
@@ -1170,3 +1170,9 @@ void writeFlash(uint32_t page, uint8_t *Data, uint16_t dataSize){
 		storecompleted = true;
 	}
 }
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+	uart_tx_ready = 1;
+}
+
