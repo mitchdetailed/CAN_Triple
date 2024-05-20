@@ -104,6 +104,7 @@ void events_20Hz(){
 /* Run 10Hz Functions here */
 void events_10Hz(){
 	toggleLED(LED_1);
+	push_string("LED Toggled...\r\n");
 
 }
 

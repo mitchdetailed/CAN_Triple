@@ -1223,6 +1223,7 @@ void transmit_arrays() {
 		}
 		else if (uart_array == 1 && array1.length > 0){
 			uart_array ^=1;
+			uart_sending = true;
 			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)array1.array, array1.length);
 			
 		}
