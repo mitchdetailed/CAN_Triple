@@ -30,10 +30,10 @@
 #include <sys/time.h>
 #include <sys/times.h>
 
-#include "main.h"
-#include <stdio.h>
-#include <errno.h>
-#include <sys/unistd.h> // STDOUT_FILENO, STDERR_FILENO
+//#include "main.h"
+//#include <stdio.h>
+//#include <errno.h>
+//#include <sys/unistd.h> // STDOUT_FILENO, STDERR_FILENO
 
 
 /* Variables */
@@ -81,7 +81,7 @@ __attribute__((weak)) int _read(int file, char *ptr, int len)
 
   return len;
 }
-/*
+
 __attribute__((weak)) int _write(int file, char *ptr, int len)
 {
   (void)file;
@@ -94,9 +94,9 @@ __attribute__((weak)) int _write(int file, char *ptr, int len)
   return len;
 }
 
-*/
-/* Added for fprint functionality.. 04-20-2024 */
 
+/* Added for fprint functionality.. 04-20-2024 */
+/*
 extern UART_HandleTypeDef huart1; // UART handle
 
 int _write(int file, char *data, int len) {
@@ -111,6 +111,8 @@ int _write(int file, char *data, int len) {
 
     return (status == HAL_OK ? len : 0);
 }
+
+*/
 
 int _close(int file)
 {

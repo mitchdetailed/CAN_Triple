@@ -3,15 +3,13 @@
  *
  */
 
-#include <stdio.h>
+//#include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include "user_code.h"
 #include "backend_functions.h"
 #include "main.h"
-
-#define UID_BASE_ADDRESS       (0x1FFF7590UL)    /*!< Unique device ID register base address */
 
 extern FDCAN_HandleTypeDef hfdcan1;
 extern FDCAN_HandleTypeDef hfdcan2;
@@ -99,6 +97,11 @@ uint8_t CAN3_TxData[8];
 
 CAN_Message message;
 bool storecompleted = false;
+
+StringArray array0 = { .array = {0}, .length = 0 };
+StringArray array1 = { .array = {0}, .length = 0 };
+uint8_t uart_array = 0;
+bool uart_sending = false;
 
 /* Sets CANbus Bitrate
 CAN_1: 1, CAN_2: 2, CAN_3: 4
@@ -939,7 +942,6 @@ float roundFloat(float num, uint8_t places) {
     for (int i = 0; i < places; i++) {
         scale *= 10;
     }
-
     if (num >= 0) {
         return (int)(num * scale + 0.5) / scale;
     } else {
@@ -956,12 +958,11 @@ float roundFloat(float num, uint8_t places) {
  *
  * \return I32 Rounded value
  */
-int32_t roundAndPrepare(float num, uint8_t decimal_places) {
+int32_t float2int32(float num, uint8_t decimal_places) {
     float scale = 1.0;
     for (uint8_t i = 0; i < decimal_places; i++) {
         scale *= 10.0;
     }
-
     // Round the number to the nearest decimal place.
     float rounded;
     if (num >= 0) {
@@ -969,7 +970,6 @@ int32_t roundAndPrepare(float num, uint8_t decimal_places) {
     } else {
         rounded = (int)(num * scale - 0.5);
     }
-
     // Multiply by 10^decimal_places to shift the decimal point.
     // Convert the result to int32_t before returning.
     return (int32_t)(rounded * scale);
@@ -982,7 +982,7 @@ int32_t roundAndPrepare(float num, uint8_t decimal_places) {
  * \return Serial Number of MCU
  */
 uint32_t getSerialNumber(void){
-return (uint32_t)(READ_REG(*((uint32_t *)UID_BASE_ADDRESS)));
+return (uint32_t)(READ_REG(*((uint32_t *)SERIALNUMBER_BASE_ADDRESS)));
 }
 
 /**
@@ -1052,7 +1052,7 @@ void init_PVD(){
 }
 
 void HAL_PWR_PVDCallback(){
-	events_Shutdown();
+	//events_Shutdown();
 }
 
 /* Read 8 bit unsigned value from address */
@@ -1094,7 +1094,6 @@ float read_float_from_address(void* address) {
 char* read_char_array_from_address(const void* source, size_t length) {
     char* dest = malloc(length * sizeof(char));
     if (dest == NULL) {
-        perror("Failed to allocate memory");
         return NULL; // Allocation failed
     }
 
@@ -1168,5 +1167,64 @@ void writeFlash(uint32_t page, uint8_t *Data, uint16_t dataSize){
 		}
 		HAL_FLASH_Lock();
 		storecompleted = true;
+	}
+}
+
+/**
+ * \brief HAL UART Transmit Complete Callback
+ * \param huart UART handle.
+ */
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
+{
+	if (uart_array == 0){
+		memset(array1.array, 0, sizeof(array1.array));
+		array1.length = 0;
+		uart_sending = false;
+	}
+	else if (uart_array == 1){
+		memset(array0.array, 0, sizeof(array0.array));
+		array0.length = 0;
+		uart_sending = false;
+	}
+}
+/**
+ * \brief Message(s) to be Sent to Serial Terminal..
+ */
+void serialPrint(const char* str) {
+	uint16_t str_length = strlen(str);
+    if (uart_array == 0) {
+        if (array0.length + str_length < UART_ARRAY_LEN) {
+            memcpy(&array0.array[array0.length], str, str_length);
+            array0.length += str_length;
+        } else {
+            // Handle overflow, e.g., log error
+        }
+    } else if (uart_array == 1) {
+        if (array1.length + str_length < UART_ARRAY_LEN) {
+            memcpy(&array1.array[array1.length], str, str_length);
+            array1.length += str_length;
+        } else {
+            // Handle overflow, e.g., log error
+        }
+    } else {
+        // Handle invalid array_selector, e.g., log error
+    }
+}
+
+/**
+ * \brief Backend Function to Send Messages to Serial Terminal
+ */
+void tx_Serial_Comms() {
+	if (uart_sending == false){
+		if (uart_array == 0 && array0.length > 0){
+			uart_array ^=1;
+			uart_sending = true;
+			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)array0.array, array0.length);
+		}
+		else if (uart_array == 1 && array1.length > 0){
+			uart_array ^=1;
+			uart_sending = true;
+			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)array1.array, array1.length);
+		}
 	}
 }

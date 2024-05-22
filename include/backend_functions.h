@@ -4,18 +4,22 @@
  */
 
 #include <stdint.h>
+#include <string.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "stm32g4xx_hal.h"
 
 #ifndef INC_BACKEND_FUNCTIONS_H_
 #define INC_BACKEND_FUNCTIONS_H_
 
-#define CAN_1 1
-#define CAN_2 2
-#define CAN_3 4
+#define CAN_1                   1
+#define CAN_2                   2
+#define CAN_3                   4
 
-#define LED_1 1
+#define LED_1                   1
 
+#define SERIALNUMBER_BASE_ADDRESS        (0x1FFF7590UL)    /*!< Unique device ID register base address */
+#define UART_ARRAY_LEN               1024
 /**
  * @brief Structure to represent a CAN network message.
  * 
@@ -31,6 +35,18 @@ typedef struct {
     uint8_t data[8];         /**< Data payload of the CAN message. */
 } CAN_Message;
 
+typedef struct {
+    char array[UART_ARRAY_LEN];
+    uint16_t length;
+} StringArray;
+
+extern StringArray array0;
+extern StringArray array1;
+extern uint8_t uart_array;
+
+UART_HandleTypeDef huart1;
+
+/*Function Prototypes*/
 uint8_t setCANBitrate(uint8_t enum_bus, uint32_t mainBitrate);
 //uint8_t setCANFDBitrate(uint8_t enum_bus, uint32_t mainBitrate, uint32_t dataBitrate, bool bitrateSwitch);
 uint8_t startCANbus(uint8_t enum_bus);
@@ -75,5 +91,8 @@ uint32_t read_uint32_t_from_address(void* address);
 int32_t read_int32_t_from_address(void* address);
 float read_float_from_address(void* address);
 char* read_char_array_from_address(const void* source, size_t length);
+
+void serialPrint(const char* str);
+void tx_Serial_Comms();
 
 #endif // INC_BACKEND_FUNCTIONS_H_
