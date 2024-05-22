@@ -1,5 +1,6 @@
 /*
- * user_code.c - All Code should be applied here unless specified otherwise.
+ * user_code.c - All User Code should be applied here unless specified otherwise.
+ * 
  */
 
 /* File Includes */
@@ -9,10 +10,8 @@
 #include "snprintf.h"
 #include <string.h>
 
-//#include <stdio.h>
-
 /* End File Includes */
-extern UART_HandleTypeDef huart1;
+
 
 /* Variable Declarations */
 uint8_t example_data_1Hz[8] = {0x01,0x02,0x03,0x04,0x05,0x06,0x07,0x08};
@@ -35,7 +34,6 @@ void events_Startup(){
 	startCANbus(CAN_2);
 	startCANbus(CAN_3);
 	serialnumber = getSerialNumber();
-
 
 }
 /* End Startup Functions */
@@ -61,6 +59,11 @@ void events_2000Hz(){
 
 /* Run 1000Hz Functions here */
 void events_1000Hz(){
+	for (uint8_t i = 0; i< 15; i++){
+		char buffer1[100];
+		snprintf(buffer1, 100,"(123.456789) can0 12345678#%02x34567890123456\r\n",i);
+		serialPrint(buffer1);
+	}
 
 }
 
@@ -129,9 +132,9 @@ void events_1Hz(){
 	for (uint8_t i=0; i<8; i++){
 		example_data_1Hz[i]++;
 	}
-	double testfloat = 123.456789123;
+	float testfloat = 1.234567;
 	char buffer[16];
-    //snprintf(buffer, sizeof(buffer), "%3.9f\r\n", testfloat);
+    snprintf(buffer, sizeof(buffer), "%3.6f\r\n", testfloat);
 	//sprintf(buffer, "%3.9f\r\n", testfloat);
 	//serialPrint(buffer);
 	//printf("Hello World..\r\n");

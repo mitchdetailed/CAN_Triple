@@ -18,7 +18,7 @@
 
 #define LED_1                   1
 
-#define UID_BASE_ADDRESS        (0x1FFF7590UL)    /*!< Unique device ID register base address */
+#define SERIALNUMBER_BASE_ADDRESS        (0x1FFF7590UL)    /*!< Unique device ID register base address */
 #define UART_ARRAY_LEN               1024
 /**
  * @brief Structure to represent a CAN network message.

@@ -11,7 +11,6 @@
 #include "backend_functions.h"
 #include "main.h"
 
-
 extern FDCAN_HandleTypeDef hfdcan1;
 extern FDCAN_HandleTypeDef hfdcan2;
 extern FDCAN_HandleTypeDef hfdcan3;
@@ -943,7 +942,6 @@ float roundFloat(float num, uint8_t places) {
     for (int i = 0; i < places; i++) {
         scale *= 10;
     }
-
     if (num >= 0) {
         return (int)(num * scale + 0.5) / scale;
     } else {
@@ -960,12 +958,11 @@ float roundFloat(float num, uint8_t places) {
  *
  * \return I32 Rounded value
  */
-int32_t roundAndPrepare(float num, uint8_t decimal_places) {
+int32_t float2int32(float num, uint8_t decimal_places) {
     float scale = 1.0;
     for (uint8_t i = 0; i < decimal_places; i++) {
         scale *= 10.0;
     }
-
     // Round the number to the nearest decimal place.
     float rounded;
     if (num >= 0) {
@@ -973,7 +970,6 @@ int32_t roundAndPrepare(float num, uint8_t decimal_places) {
     } else {
         rounded = (int)(num * scale - 0.5);
     }
-
     // Multiply by 10^decimal_places to shift the decimal point.
     // Convert the result to int32_t before returning.
     return (int32_t)(rounded * scale);
@@ -986,7 +982,7 @@ int32_t roundAndPrepare(float num, uint8_t decimal_places) {
  * \return Serial Number of MCU
  */
 uint32_t getSerialNumber(void){
-return (uint32_t)(READ_REG(*((uint32_t *)UID_BASE_ADDRESS)));
+return (uint32_t)(READ_REG(*((uint32_t *)SERIALNUMBER_BASE_ADDRESS)));
 }
 
 /**
@@ -1174,6 +1170,10 @@ void writeFlash(uint32_t page, uint8_t *Data, uint16_t dataSize){
 	}
 }
 
+/**
+ * \brief HAL UART Transmit Complete Callback
+ * \param huart UART handle.
+ */
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if (uart_array == 0){
@@ -1186,9 +1186,10 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 		array0.length = 0;
 		uart_sending = false;
 	}
-	
 }
-
+/**
+ * \brief Message(s) to be Sent to Serial Terminal..
+ */
 void serialPrint(const char* str) {
 	uint16_t str_length = strlen(str);
     if (uart_array == 0) {
@@ -1197,7 +1198,6 @@ void serialPrint(const char* str) {
             array0.length += str_length;
         } else {
             // Handle overflow, e.g., log error
-            //printf("Array 0 overflow\n");
         }
     } else if (uart_array == 1) {
         if (array1.length + str_length < UART_ARRAY_LEN) {
@@ -1205,15 +1205,15 @@ void serialPrint(const char* str) {
             array1.length += str_length;
         } else {
             // Handle overflow, e.g., log error
-            //printf("Array 1 overflow\n");
         }
     } else {
         // Handle invalid array_selector, e.g., log error
-        //printf("Invalid array selector\n");
     }
 }
 
-
+/**
+ * \brief Backend Function to Send Messages to Serial Terminal
+ */
 void tx_Serial_Comms() {
 	if (uart_sending == false){
 		if (uart_array == 0 && array0.length > 0){
@@ -1225,7 +1225,6 @@ void tx_Serial_Comms() {
 			uart_array ^=1;
 			uart_sending = true;
 			HAL_UART_Transmit_DMA(&huart1, (uint8_t*)array1.array, array1.length);
-			
 		}
 	}
 }
