@@ -91,8 +91,9 @@ uint32_t read_uint32_t_from_address(void* address);
 int32_t read_int32_t_from_address(void* address);
 float read_float_from_address(void* address);
 char* read_char_array_from_address(const void* source, size_t length);
-
 void serialPrint(const char* str);
 void tx_Serial_Comms();
+float process_numeric_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset);
+uint32_t process_raw_value(uint32_t value, uint32_t bitmask);
 
 #endif // INC_BACKEND_FUNCTIONS_H_

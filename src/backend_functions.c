@@ -1228,3 +1228,63 @@ void tx_Serial_Comms() {
 		}
 	}
 }
+
+/**
+ * \brief Processes CAN Data to return Float.
+ * \param value : Which bytes to look at
+ * \param bitmask : the Bitmask to read and right shift data if necessary
+ * \param is_signed : if the Data type is Signed, True. 
+ * \param factor : DBC Factor.
+ * \param offset : DBC Offset.
+ * \return Float Value.
+ */
+float process_numeric_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset) {
+    uint32_t result = value & bitmask;
+    uint32_t most_significant_bit = bitmask & (~bitmask + 1);
+
+    if (is_signed) {
+        // If the most significant bit set in bitmask is set in value, subtract the most significant bit value
+        // and add the rest of the bits
+        if (value & most_significant_bit) {
+            result = ((result & most_significant_bit) * -1) + (result & ~most_significant_bit);
+        }
+    }
+
+    // Calculate the number of bits to rightshift by finding the position of the first bit set in the bitmask
+    uint32_t rightshift = 0;
+    uint32_t temp_bitmask = bitmask;
+    while ((temp_bitmask & 1) == 0) {
+        temp_bitmask >>= 1;
+        rightshift++;
+    }
+
+    result >>= rightshift;
+    float final_result = (float)result * factor + offset;
+    return final_result;
+
+}
+
+
+/**
+ * \brief Processes CAN Data to masked and shifted value.
+ * \param value : Which bytes to look at
+ * \param bitmask : the Bitmask to read and right shift data if necessary
+ * \return Uint32_t Value
+ */
+uint32_t process_raw_value(uint32_t value, uint32_t bitmask) {
+    // Apply the bitmask to the value
+    uint32_t result = value & bitmask;
+
+    // Calculate the number of bits to rightshift by finding the position of the first bit set in the bitmask
+    uint32_t rightshift = 0;
+    uint32_t temp_bitmask = bitmask;
+    while ((temp_bitmask & 1) == 0) {
+        temp_bitmask >>= 1;
+        rightshift++;
+    }
+
+    // Rightshift the result by the calculated number of bits
+    result >>= rightshift;
+
+    return result;
+}
