@@ -1,8 +1,14 @@
 # CAN Triple 1.0 Documentation
 
-The CAN Triple is designed to simplify the scope of interfacing multiple CAN Buses with a small form factor for Automotive Environments. Offers an Efficient and lightweight way to manage traffic among 3 CAN 2.0 Networks. Nearly all code should be written in the *user_code.c* file.
+The CAN Triple is designed to simplify the scope of interfacing multiple CAN Buses with a small form factor for Automotive Environments. Offers an Efficient and lightweight way to manage traffic among 3 CAN 2.0 Networks. Nearly all code should be written in the `*user_code.c*` file. Programming is completed by using a STlink V3 Debugger.
 
-## Code Function Calls
+## Prerequisites
+- Python [Download Link](https://www.python.org/downloads/)
+- - *Make sure to Add python to PATH when installing Python...
+- Visual Studio Code (VSCode) [Download Link](https://code.visualstudio.com/)
+- PlatformIO extension for VSCode [Download Link](https://platformio.org/platformio-ide)
+
+## Code Function Calls for user_code.c
 
 Setting CAN Bitrate : 
 ```C
@@ -104,4 +110,4 @@ typedef struct {
 } CAN_Message;
 
 // we'll define the CAN_Message and call each field using the [dot] operator.
-
+eg, for which bus the message came from, use Message.Bus 
