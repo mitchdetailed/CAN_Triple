@@ -1,17 +1,20 @@
 /*
  * user_code.h
- *
  */
 
-#ifndef INC_USER_CODE_H_
-#define INC_USER_CODE_H_
-#define BUFFER_SIZE 256                 /**< Must Be incremented by a factor of 2. eg.(4,8,16,32,64,..,256) */
-//#define UART_DEBUG_BAUDRATE 115200    /** Default UART Debug Speed*/
-#define UART_DEBUG_BAUDRATE 7372800      /** Maximum Teleplot Plugin UART Debug Speed*/
+/* Includes Declarations */
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
 
+/* Defines Declarations */
+#ifndef INC_USER_CODE_H_
+#define INC_USER_CODE_H_
+#define CAN_MSG_BUFFER_SIZE 256                 /* < Must Be incremented by a factor of 2. eg.(4,8,16,32,64,..,256) */
+//#define UART_DEBUG_BAUDRATE 115200    /* Default UART Debug Speed*/
+#define UART_DEBUG_BAUDRATE 7372800      /* Maximum UART Debug Speed*/
+
+/* Function Prototypes */
 
 void events_Startup(void);
 void events_2000Hz(void);

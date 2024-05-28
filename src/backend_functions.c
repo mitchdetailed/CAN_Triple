@@ -26,42 +26,42 @@ struct q_CAN_Msg
 // CAN RX Queue
 uint8_t can1_Rx_qHead = 0;
 uint8_t can1_Rx_qTail = 0;
-struct q_CAN_Msg can1_Rx_qData[BUFFER_SIZE];
+struct q_CAN_Msg can1_Rx_qData[CAN_MSG_BUFFER_SIZE];
 uint8_t can1_Rx_qNextHead = 0;
 uint8_t can1_Rx_qElements = 0;
 
 // CAN 1 TX Queue
 uint8_t can1_Tx_qHead = 0;
 uint8_t can1_Tx_qTail = 0;
-struct q_CAN_Msg can1_Tx_qData[BUFFER_SIZE];
+struct q_CAN_Msg can1_Tx_qData[CAN_MSG_BUFFER_SIZE];
 uint8_t can1_Tx_qNextHead = 0;
 uint8_t can1_Tx_qElements = 0;
 
 // CAN 2 RX Queue
 uint8_t can2_Rx_qHead = 0;
 uint8_t can2_Rx_qTail = 0;
-struct q_CAN_Msg can2_Rx_qData[BUFFER_SIZE];
+struct q_CAN_Msg can2_Rx_qData[CAN_MSG_BUFFER_SIZE];
 uint8_t can2_Rx_qNextHead = 0;
 uint8_t can2_Rx_qElements = 0;
 
 // CAN 2 TX Queue
 uint8_t can2_Tx_qHead = 0;
 uint8_t can2_Tx_qTail = 0;
-struct q_CAN_Msg can2_Tx_qData[BUFFER_SIZE];
+struct q_CAN_Msg can2_Tx_qData[CAN_MSG_BUFFER_SIZE];
 uint8_t can2_Tx_qNextHead = 0;
 uint8_t can2_Tx_qElements = 0;
 
 // CAN 3 RX Queue
 uint8_t can3_Rx_qHead = 0;
 uint8_t can3_Rx_qTail = 0;
-struct q_CAN_Msg can3_Rx_qData[BUFFER_SIZE];
+struct q_CAN_Msg can3_Rx_qData[CAN_MSG_BUFFER_SIZE];
 uint8_t can3_Rx_qNextHead = 0;
 uint8_t can3_Rx_qElements = 0;
 
 // CAN 3 TX Queue
 uint8_t can3_Tx_qHead = 0;
 uint8_t can3_Tx_qTail = 0;
-struct q_CAN_Msg can3_Tx_qData[BUFFER_SIZE];
+struct q_CAN_Msg can3_Tx_qData[CAN_MSG_BUFFER_SIZE];
 uint8_t can3_Tx_qNextHead = 0;
 uint8_t can3_Tx_qElements = 0;
 
@@ -492,7 +492,7 @@ uint8_t add_to_CAN_RX_Queue(uint8_t enum_bus, bool EXT_ID, uint32_t ID, uint8_t 
 uint8_t send_message(uint8_t enum_bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t data[8]){
 	uint8_t return_val = 0;
 	if((enum_bus & CAN_1) == CAN_1){
-		can1_Tx_qNextHead = (can1_Tx_qHead + 1) & (BUFFER_SIZE-1);
+		can1_Tx_qNextHead = (can1_Tx_qHead + 1) & (CAN_MSG_BUFFER_SIZE-1);
 		/*  if there is room */
 		if (can1_Tx_qNextHead != can1_Tx_qTail){
 			can1_Tx_qData[can1_Tx_qHead].EXT_ID = is_extended_id;
@@ -510,7 +510,7 @@ uint8_t send_message(uint8_t enum_bus, bool is_extended_id, uint32_t arbitration
 		}
 	}
 	if ((enum_bus & CAN_2) == CAN_2){
-		can2_Tx_qNextHead = (can2_Tx_qHead + 1) & (BUFFER_SIZE-1);
+		can2_Tx_qNextHead = (can2_Tx_qHead + 1) & (CAN_MSG_BUFFER_SIZE-1);
 		/*  if there is room */
 		if (can2_Tx_qNextHead != can2_Tx_qTail){
 			can2_Tx_qData[can2_Tx_qHead].EXT_ID = is_extended_id;
@@ -528,7 +528,7 @@ uint8_t send_message(uint8_t enum_bus, bool is_extended_id, uint32_t arbitration
 		}
 	}
 	if ((enum_bus & CAN_3) == CAN_3){
-		can3_Tx_qNextHead = (can3_Tx_qHead + 1) & (BUFFER_SIZE-1);
+		can3_Tx_qNextHead = (can3_Tx_qHead + 1) & (CAN_MSG_BUFFER_SIZE-1);
 		/*  if there is room */
 		if (can3_Tx_qNextHead != can3_Tx_qTail){
 			can3_Tx_qData[can3_Tx_qHead].EXT_ID = is_extended_id;
@@ -931,13 +931,13 @@ uint32_t calculateCRC32(uint8_t *data, size_t length, uint32_t polynomial, uint3
 
 /**
  * \brief Round a floating point value to X decimal places. --
- * Example : roundFloat(3.1415927654, 2); --
+ * Example : roundfloat(3.1415927654, 2); --
  * Returns : 3.14
  * \param num F32 number
  * \param places Decimal place Count
  * \return F32 Rounded value
  */
-float roundFloat(float num, uint8_t places) {
+float roundfloat(float num, uint8_t places) {
     float scale = 1;
     for (int i = 0; i < places; i++) {
         scale *= 10;
@@ -958,7 +958,7 @@ float roundFloat(float num, uint8_t places) {
  *
  * \return I32 Rounded value
  */
-int32_t float2int32(float num, uint8_t decimal_places) {
+int32_t roundfloat_to_int32(float num, uint8_t decimal_places) {
     float scale = 1.0;
     for (uint8_t i = 0; i < decimal_places; i++) {
         scale *= 10.0;
@@ -1230,15 +1230,15 @@ void tx_Serial_Comms() {
 }
 
 /**
- * \brief Processes CAN Data to return Float.
- * \param value : Which bytes to look at
+ * \brief Processes CAN Data to return a Float.
+ * \param value : Value to look at
  * \param bitmask : the Bitmask to read and right shift data if necessary
  * \param is_signed : if the Data type is Signed, True. 
  * \param factor : DBC Factor.
  * \param offset : DBC Offset.
  * \return Float Value.
  */
-float process_numeric_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset) {
+float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset) {
     uint32_t result = value & bitmask;
     uint32_t most_significant_bit = bitmask & (~bitmask + 1);
 
@@ -1261,9 +1261,65 @@ float process_numeric_value(uint32_t value, uint32_t bitmask, bool is_signed, fl
     result >>= rightshift;
     float final_result = (float)result * factor + offset;
     return final_result;
-
 }
 
+/**
+ * \brief Processes CAN Data to return an Integer.
+ * \param value : Value to look at
+ * \param bitmask : the Bitmask to read and right shift data if necessary
+ * \param is_signed : if the Data type is Signed, True. 
+ * \param factor : DBC Factor.
+ * \param offset : DBC Offset.
+ * \return Signed Integer Value.
+ */
+int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int32_t factor, int32_t offset) {
+    uint32_t result = value & bitmask;
+    uint32_t most_significant_bit = bitmask & (~bitmask + 1);
+
+    if (is_signed) {
+        // If the most significant bit set in bitmask is set in value, subtract the most significant bit value
+        // and add the rest of the bits
+        if (value & most_significant_bit) {
+            result = ((result & most_significant_bit) * -1) + (result & ~most_significant_bit);
+        }
+    }
+
+    // Calculate the number of bits to rightshift by finding the position of the first bit set in the bitmask
+    uint32_t rightshift = 0;
+    uint32_t temp_bitmask = bitmask;
+    while ((temp_bitmask & 1) == 0) {
+        temp_bitmask >>= 1;
+        rightshift++;
+    }
+
+    result >>= rightshift;
+    float final_result = (float)result * factor + offset;
+    return final_result;
+}
+
+/**
+ * \brief Processes CAN Data to return an Unsigned Integer.
+ * \param value : Value to look at
+ * \param bitmask : the Bitmask to read and right shift data if necessary
+ * \param factor : DBC Factor.
+ * \param offset : DBC Offset.
+ * \return Unsigned Integer Value.
+ */
+uint32_t process_unsigned_int_value(uint32_t value, uint32_t bitmask, uint32_t factor, uint32_t offset) {
+    uint32_t result = value & bitmask;
+
+    // Calculate the number of bits to rightshift by finding the position of the first bit set in the bitmask
+    uint32_t rightshift = 0;
+    uint32_t temp_bitmask = bitmask;
+    while ((temp_bitmask & 1) == 0) {
+        temp_bitmask >>= 1;
+        rightshift++;
+    }
+
+    result >>= rightshift;
+    float final_result = (float)result * factor + offset;
+    return final_result;
+}
 
 /**
  * \brief Processes CAN Data to masked and shifted value.
