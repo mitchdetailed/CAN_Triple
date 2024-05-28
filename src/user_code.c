@@ -19,6 +19,7 @@ uint32_t serialnumber = 0;
 uint16_t test_rpm = 500;
 char test_rpm_unit[8] = "§RPM";
 bool increment_rpm = true;
+float testvalue;
 
 /* Startup Functions */
 void events_Startup(){
@@ -39,13 +40,13 @@ void events_Startup(){
 
 void onReceive(CAN_Message Message){
 	if (Message.Bus == CAN_1){
-		send_message(CAN_2, Message.is_extended_id, Message.arbitration_id, Message.dlc, Message.data);
+		//send_message(CAN_2, Message.is_extended_id, Message.arbitration_id, Message.dlc, Message.data);
 	}
 	if (Message.Bus == CAN_2){
-		send_message(CAN_3, Message.is_extended_id, Message.arbitration_id, Message.dlc, Message.data);
+		//send_message(CAN_3, Message.is_extended_id, Message.arbitration_id, Message.dlc, Message.data);
 	}
 	if (Message.Bus == CAN_3){
-		send_message(CAN_1, Message.is_extended_id, Message.arbitration_id, Message.dlc, Message.data);
+		//send_message(CAN_1, Message.is_extended_id, Message.arbitration_id, Message.dlc, Message.data);
 				
 	}
 }
@@ -58,9 +59,9 @@ void events_2000Hz(){
 /* Run 1000Hz Functions here */
 void events_1000Hz(){
 	for (uint8_t i = 0; i< 15; i++){
-		char buffer1[100];
-		snprintf(buffer1, 100,"(123.456789) can0 12345678#%02x34567890123456\r\n",i);
-		serialPrint(buffer1);
+		//char buffer1[100];
+		//snprintf(buffer1, 100,"(123.456789) can0 12345678#%02x34567890123456\r\n",i);
+		//serialPrint(buffer1);
 	}
 
 }

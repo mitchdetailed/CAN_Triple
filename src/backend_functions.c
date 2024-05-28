@@ -1236,9 +1236,12 @@ void tx_Serial_Comms() {
  * \param is_signed : if the Data type is Signed, True. 
  * \param factor : DBC Factor.
  * \param offset : DBC Offset.
+ * \param decimal_places : the amount of digits to the right to round to
  * \return Float Value.
  */
-float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset) {
+#include <stdint.h> // for uint32_t and uint8_t
+
+float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset, uint8_t decimal_places) {
     uint32_t result = value & bitmask;
     uint32_t most_significant_bit = bitmask & (~bitmask + 1);
 
@@ -1249,8 +1252,8 @@ float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, floa
             result = ((result & most_significant_bit) * -1) + (result & ~most_significant_bit);
         }
     }
-
-    // Calculate the number of bits to rightshift by finding the position of the first bit set in the bitmask
+	
+	// Calculate the number of bits to rightshift by finding the position of the first bit set in the bitmask
     uint32_t rightshift = 0;
     uint32_t temp_bitmask = bitmask;
     while ((temp_bitmask & 1) == 0) {
@@ -1259,9 +1262,27 @@ float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, floa
     }
 
     result >>= rightshift;
-    float final_result = (float)result * factor + offset;
-    return final_result;
+
+    // Convert result to float and apply factor and offset
+    float processed_value = result * factor + offset;
+
+    // Calculate the rounding factor based on the decimal_places without using std::pow
+    float rounding_factor = 1.0f;
+    for (uint8_t i = 0; i < decimal_places; ++i) {
+        rounding_factor *= 10.0f;
+    }
+
+    // Round the processed_value to the specified number of decimal places using C-style casting
+    if (processed_value >= 0) {
+        processed_value = (int)(processed_value * rounding_factor + 0.5f) / rounding_factor;
+    } else {
+        processed_value = (int)(processed_value * rounding_factor - 0.5f) / rounding_factor;
+    }
+
+    return processed_value;
 }
+
+
 
 /**
  * \brief Processes CAN Data to return an Integer.

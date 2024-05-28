@@ -26,10 +26,12 @@
 
 /**
  * @brief Structure to represent a CAN network message.
- * 
- * This structure is used to hold all the necessary data for a CAN message,
- * including its identifier, whether it is using an extended identifier,
- * and the payload data.
+ * \param Bus : ID of the CAN bus the message is associated with.
+ * \param is_extended_id : rue if using an extended ID, false if using a standard ID.
+ * \param arbitration_id : The identifier for the message, either standard or extended based on is_extended_id.
+ * \param dlc : the Data Length Field
+ * \param data[8] : the Data array
+ * \return Uint32_t Value
  */
 typedef struct {
     uint8_t Bus;             /**< ID of the CAN bus the message is associated with. */
@@ -69,7 +71,7 @@ uint8_t add_to_CAN_RX_Queue(uint8_t enum_bus, bool EXT_ID, uint32_t ID, uint8_t 
 
 // Arithmatic Functions related to CAN Reception and Transmission //
 
-float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset);
+float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset,  uint8_t decimal_places);
 int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int32_t factor, int32_t offset);
 uint32_t process_unsigned_int_value(uint32_t value, uint32_t bitmask, uint32_t factor, uint32_t offset);
 uint32_t process_raw_value(uint32_t value, uint32_t bitmask);
