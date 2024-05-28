@@ -126,11 +126,11 @@ All other data can be stored as an unsigned integer.
 
 ### Storing signals as a float
 ```C
-float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset);
+float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset, uint8_t decimal_places);
 
 //Input a value, bitmask, the is_signed Boolean, a factor, and offset and return a floating point. 
 ```
-Lets assume the Engine speed is an unsigned 16 bit or 2 byte Big Endian CAN Signal on Bus 1 and Message ID 0x123 and is the first 2 bytes(indexes 0 and 1) of the Data field. It has a factor of 0.125 and an offset of 0. The code could be setup the following way. 
+Lets assume the Engine speed is an unsigned 16 bit or 2 byte Big Endian CAN Signal on Bus 1 and Message ID 0x123 and is the first 2 bytes(indexes 0 and 1) of the Data field. It has a factor of 0.125 and an offset of 0 and we want to constrain to 3 decimal places. The code could be setup the following way. 
 
 ```C
 float engine_Speed = 0;
@@ -139,7 +139,7 @@ onReceive(CAN_Message Message){
         if (Message.arbitration_id == 0x123){
             // generic variable to hold the data bytes needed for the process
             uint32_t message_info = (Message.data[0]<< 8)| (Message.data[1]);
-            engine_speed = process_float_value(message_info, 0xFFFF,false,0.125,0);
+            engine_speed = process_float_value(message_info, 0xFFFF,false,0.125,0,3);
         }
     }
 }
