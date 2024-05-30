@@ -1365,3 +1365,28 @@ uint32_t process_raw_value(uint32_t value, uint32_t bitmask) {
 
     return result;
 }
+
+
+int32_t map_int(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max){
+	return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+float map_float(float x, float in_min, float in_max, float out_min, float out_max){
+	return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+int32_t clamped_map_int(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max){
+	if (x < in_min) {
+        x = in_min;
+    } else if (x > in_max) {
+        x = in_max;
+    }
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+float clamped_map_float(float x, float in_min, float in_max, float out_min, float out_max){
+	if (x < in_min) {
+        x = in_min;
+    } else if (x > in_max) {
+        x = in_max;
+    }
+    return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
