@@ -120,7 +120,7 @@ uint8_t setupCANbus(CAN_Bus bus, uint32_t mainBitrate, CAN_Mode mode){
 	uint32_t apb1clock = HAL_RCC_GetPCLK1Freq();
 	uint32_t prescaler = apb1clock/(mainBitrate*17);
 
-	if(bus == CAN_1){
+	if((bus & CAN_1) == CAN_1){
 		hfdcan1.Instance = FDCAN1;
 		hfdcan1.Init.ClockDivider = FDCAN_CLOCK_DIV1;
 		hfdcan1.Init.FrameFormat = FDCAN_FRAME_CLASSIC;
@@ -148,7 +148,7 @@ uint8_t setupCANbus(CAN_Bus bus, uint32_t mainBitrate, CAN_Mode mode){
 		    returnval = 1;
 		}
 	}
-	if(bus == CAN_2){
+	if((bus & CAN_2) == CAN_2){
 		hfdcan2.Instance = FDCAN2;
 		hfdcan2.Init.ClockDivider = FDCAN_CLOCK_DIV1;
 		hfdcan2.Init.FrameFormat = FDCAN_FRAME_CLASSIC;
@@ -176,7 +176,7 @@ uint8_t setupCANbus(CAN_Bus bus, uint32_t mainBitrate, CAN_Mode mode){
 		    returnval = 1;
 		}
 	}
-	if(bus == CAN_3){
+	if((bus & CAN_3) == CAN_3){
 		hfdcan3.Instance = FDCAN3;
 		hfdcan3.Init.ClockDivider = FDCAN_CLOCK_DIV1;
 		hfdcan3.Init.FrameFormat = FDCAN_FRAME_CLASSIC;
@@ -217,7 +217,7 @@ uint8_t startCANbus(CAN_Bus bus){
 	
 	uint8_t returnval = 0;
 
-	if(bus == CAN_1){
+	if((bus & CAN_1) == CAN_1){
 		uint8_t groupval = 0;
 		if(HAL_FDCAN_ConfigGlobalFilter(&hfdcan1, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_REJECT_REMOTE, FDCAN_REJECT_REMOTE) != HAL_OK){
 			groupval += 1;
@@ -240,7 +240,7 @@ uint8_t startCANbus(CAN_Bus bus){
 			returnval = 1;
 		}
 	}
-	if(bus == CAN_2){
+	if((bus & CAN_2) == CAN_2){
 		uint8_t groupval = 0;
 		if(HAL_FDCAN_ConfigGlobalFilter(&hfdcan2, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_REJECT_REMOTE, FDCAN_REJECT_REMOTE) != HAL_OK){
 			groupval += 1;
@@ -256,7 +256,7 @@ uint8_t startCANbus(CAN_Bus bus){
 			returnval = 1;
 		}
 	}
-	if(bus == CAN_3){
+	if((bus & CAN_3) == CAN_3){
 		uint8_t groupval = 0;
 		if(HAL_FDCAN_ConfigGlobalFilter(&hfdcan3, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_ACCEPT_IN_RX_FIFO0, FDCAN_REJECT_REMOTE, FDCAN_REJECT_REMOTE) != HAL_OK){
 			groupval += 1;
@@ -298,17 +298,17 @@ uint8_t stopCANbus(CAN_Bus bus){
 		**    Error_Handler();
 		**  }
 		*/
-	if(bus == CAN_1){
+	if((bus & CAN_1) == CAN_1){
 		if(HAL_FDCAN_Stop(&hfdcan1) != HAL_OK){
 			returnval = 1;
 		}
 	}
-	if(bus == CAN_2){
+	if((bus & CAN_2) == CAN_2){
 		if(HAL_FDCAN_Stop(&hfdcan2) != HAL_OK){
 			returnval = 1;
 		}
 	}
-	if(bus == CAN_3){
+	if((bus & CAN_3) == CAN_3){
 		if(HAL_FDCAN_Stop(&hfdcan3) != HAL_OK){
 			returnval = 1;
 		}
@@ -324,7 +324,7 @@ uint8_t stopCANbus(CAN_Bus bus){
  */
 uint8_t setCAN_Termination(CAN_Bus bus, bool activated){
 	uint8_t returnval = 0;
-	if(bus == CAN_1){
+	if((bus & CAN_1) == CAN_1){
 		if(activated == true){
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, 1);
 		}
@@ -332,7 +332,7 @@ uint8_t setCAN_Termination(CAN_Bus bus, bool activated){
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, 0);
 		}
 	}
-	if(bus == CAN_2){
+	if((bus & CAN_2) == CAN_2){
 		if(activated == true){
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 1);
 		}
@@ -340,7 +340,7 @@ uint8_t setCAN_Termination(CAN_Bus bus, bool activated){
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11, 0);
 		}
 	}
-	if(bus == CAN_3){
+	if((bus & CAN_3) == CAN_3){
 		if(activated == true){
 			HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, 1);
 		}
@@ -481,7 +481,7 @@ void HAL_FDCAN_TxBufferCompleteCallback(FDCAN_HandleTypeDef *hfdcan, uint32_t Bu
 CAN_1: 1, CAN_2: 2, CAN_3: 4 */
 uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, uint8_t rxData[8]){
 	uint8_t return_val = 0;
-	if(bus == CAN_1){
+	if((bus & CAN_1) == CAN_1){
 		can1_Rx_qNextHead = (can1_Rx_qHead + 1) & 0xFF;
 		/*  if there is room */
 		if(can1_Rx_qNextHead != can1_Rx_qTail){
@@ -499,7 +499,7 @@ uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, 
 			return_val = 1;
 		}
 	}
-	if(bus == CAN_2){
+	if((bus & CAN_2) == CAN_2){
 		can2_Rx_qNextHead = (can2_Rx_qHead + 1) & 0xFF;
 		/*  if there is room */
 		if(can2_Rx_qNextHead != can2_Rx_qTail){
@@ -517,7 +517,7 @@ uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, 
 		return_val = 2;
 		}
 	}
-	if(bus == CAN_3){
+	if((bus & CAN_3) == CAN_3){
 		can3_Rx_qNextHead = (can3_Rx_qHead + 1) & 0xFF;
 		/*  if there is room */
 		if(can3_Rx_qNextHead != can3_Rx_qTail){
@@ -549,7 +549,7 @@ uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, 
  */
 uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t data[8]){
 	uint8_t return_val = 0;
-	if(bus == CAN_1){
+	if((bus & CAN_1) == CAN_1){
 		can1_Tx_qNextHead = (can1_Tx_qHead + 1) & (CAN_MSG_BUFFER_SIZE-1);
 		/*  if there is room */
 		if(can1_Tx_qNextHead != can1_Tx_qTail){
@@ -567,7 +567,7 @@ uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, 
 			return_val = 1;
 		}
 	}
-	if(bus == CAN_2){
+	if((bus & CAN_2) == CAN_2){
 		can2_Tx_qNextHead = (can2_Tx_qHead + 1) & (CAN_MSG_BUFFER_SIZE-1);
 		/*  if there is room */
 		if(can2_Tx_qNextHead != can2_Tx_qTail){
@@ -585,7 +585,7 @@ uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, 
 		return_val = 2;
 		}
 	}
-	if(bus == CAN_3){
+	if((bus & CAN_3) == CAN_3){
 		can3_Tx_qNextHead = (can3_Tx_qHead + 1) & (CAN_MSG_BUFFER_SIZE-1);
 		/*  if there is room */
 		if(can3_Tx_qNextHead != can3_Tx_qTail){
@@ -784,7 +784,7 @@ void HAL_FDCAN_ErrorStatusCallback(FDCAN_HandleTypeDef *hfdcan, uint32_t ErrorSt
 uint8_t resetCAN(CAN_Bus bus){
 	uint8_t groupval = 0;
 	uint8_t returnval = 0;
-	if(bus == CAN_1){
+	if((bus & CAN_1) == CAN_1){
 		if(HAL_FDCAN_Stop(&hfdcan1) != HAL_OK){
 			groupval += 1;
 		}
@@ -799,7 +799,7 @@ uint8_t resetCAN(CAN_Bus bus){
 		}
 	groupval = 0;
 	}
-	if(bus == CAN_2){
+	if((bus & CAN_2) == CAN_2){
 		if(HAL_FDCAN_Stop(&hfdcan2) != HAL_OK){
 			groupval += 1;
 		}
@@ -814,7 +814,7 @@ uint8_t resetCAN(CAN_Bus bus){
 		}
 	groupval = 0;
 	}
-	if(bus == CAN_3){
+	if((bus & CAN_3) == CAN_3){
 		if(HAL_FDCAN_Stop(&hfdcan3) != HAL_OK){
 			groupval += 1;
 		}
