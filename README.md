@@ -12,67 +12,67 @@ The CAN Triple is designed to simplify the scope of interfacing multiple CAN Bus
 
 ### Setting CAN Bitrate : 
 ```C
-uint8_t setCANBitrate(uint8_t enum_bus, uint32_t mainBitrate)
+uint8_t setCANBitrate(uint8_t bus, uint32_t mainBitrate)
 Sets CANbus Bitrate
 
 Parameters:
-enum_bus – CAN_1, CAN_2, and/or CAN_3.
+bus – CAN_1, CAN_2, and/or CAN_3.
 mainBitrate – Bitrate of CANbus in bits per second.
 
 Returns:
-CAN_1, CAN_2, and/or CAN_3.
+0 if no errors.
 ```
 ---
 ### Setting internal 120 Ω Termination Resistor for CAN Bus(es) : 
 ```C
-uint8_t setCAN_Termination(uint8_t enum_bus, bool activated)
+uint8_t setCAN_Termination(uint8_t bus, bool activated)
 Enable or Disable CAN Termination across CANbuses
 
 Parameters:
-enum_bus – CAN_1, CAN_2, and/or CAN_3.
+bus – CAN_1, CAN_2, and/or CAN_3.
 
 Returns:
-CAN_1, CAN_2, and/or CAN_3 only if termination enabled.
+0 if no errors
 ```
 ---
 ### Starting CAN Bus(es) :
 ```C
-uint8_t startCANbus(uint8_t enum_bus)
+uint8_t startCANbus(uint8_t bus)
 Starts CANbus
 
 Parameters:
-enum_bus – CAN_1, CAN_2, and/or CAN_3.
+bus – CAN_1, CAN_2, and/or CAN_3.
 
 Returns:
-CAN_1, CAN_2, and/or CAN_3.
+0 if no errors.
 ```
 ---
 ### Stopping CAN Bus(es) : 
 ```C
-uint8_t stopCANbus(uint8_t enum_bus)
+uint8_t stopCANbus(uint8_t bus)
 Stops CANbus Bitrate
 
 Parameters:
-enum_bus – CAN_1, CAN_2, and/or CAN_3.
+bus – CAN_1, CAN_2, and/or CAN_3.
 
 Returns:
-CAN_1, CAN_2, and/or CAN_3.
+0 if no errors.
 ```
 ---
 ### Sending a CAN Message : 
 ```C
-uint8_t send_message(uint8_t enum_bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t *data)
+uint8_t send_message(uint8_t bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t *data)
 Sends message to Queue to be pushed to the CANbus
 
 Parameters:
-enum_bus – CAN_1, CAN_2, and/or CAN_3.
+bus – CAN_1, CAN_2, and/or CAN_3.
 is_extended_id – True or False.
 arbitration_id – Message ID.
 dlc – Data Length.
 data – Message data (8 Bytes).
 
 Returns:
-CAN_1, CAN_2, and/or CAN_3
+0 if no errors.
 ```
 ---
 ### Turning GPIO LED on/off : 
@@ -83,6 +83,9 @@ Writes OnBoard LED
 Parameters:
 led_enum – LED_1.
 high – Boolean.
+
+Returns:
+0 if no errors.
 ```
 ---
 ### Toggling GPIO LED : 
@@ -92,6 +95,9 @@ Toggles OnBoard LED
 
 Parameters:
 led_enum – LED_1.
+
+Returns:
+0 if no errors.
 ```
 ---
 ### Managing Received CAN Messages : 

@@ -8,21 +8,35 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "stm32g4xx_hal.h"
+#include "user_code.h"
 
 /* Defines Declarations */
 #ifndef INC_BACKEND_FUNCTIONS_H_
 #define INC_BACKEND_FUNCTIONS_H_
 
-#define CAN_1                   1
-#define CAN_2                   2
-#define CAN_3                   4
 
-#define LED_1                   1
 
-#define SERIALNUMBER_BASE_ADDRESS    (0x1FFF7590UL)    /*!< Unique device ID register base address */
-#define UART_ARRAY_LEN               1024
 
 /* Variable Declarations */
+
+uint16_t can1Reset_counter;
+uint16_t can2Reset_counter;
+uint16_t can3Reset_counter;
+
+typedef enum {
+    CAN_1 = 1<< 0,
+    CAN_2 = 1<< 1,
+    CAN_3 = 1<< 2
+} CAN_Bus;
+
+typedef enum {
+    LED_1
+} gpio_LED;
+typedef struct {
+    uint8_t TxErrorCounter;
+    uint8_t RxErrorCounter;
+    uint8_t BusResetCounter;
+} CAN_ErrorCounts;
 
 /**
  * @brief Structure to represent a CAN network message.
@@ -31,7 +45,7 @@
  * \param arbitration_id : The identifier for the message, either standard or extended based on is_extended_id.
  * \param dlc : the Data Length Field
  * \param data[8] : the Data array
- * \return Uint32_t Value
+ * \return uint32_t Value
  */
 typedef struct {
     uint8_t Bus;             /**< ID of the CAN bus the message is associated with. */
@@ -41,8 +55,13 @@ typedef struct {
     uint8_t data[8];         /**< Data payload of the CAN message. */
 } CAN_Message;
 
+typedef enum {
+    NORMAL_MODE,
+    LISTEN_ONLY
+} CAN_Mode;
+
 typedef struct {
-    char array[UART_ARRAY_LEN];
+    char array[UART_MSG_BUFFER_SIZE];
     uint16_t length;
 } StringArray;
 
@@ -51,23 +70,25 @@ extern StringArray array1;
 extern uint8_t uart_array;
 UART_HandleTypeDef huart1;
 
+
 /* Function Prototypes */
 
 // CAN Physical Layer Function Prototypes //
-uint8_t setCANBitrate(uint8_t enum_bus, uint32_t mainBitrate);
-//uint8_t setCANFDBitrate(uint8_t enum_bus, uint32_t mainBitrate, uint32_t dataBitrate, bool bitrateSwitch);
-uint8_t startCANbus(uint8_t enum_bus);
-uint8_t stopCANbus(uint8_t enum_bus);
-uint8_t resetCAN(uint8_t enum_bus);
-uint8_t setCAN_Termination(uint8_t enum_bus, bool activated);
+uint8_t setupCANbus(CAN_Bus bus, uint32_t mainBitrate, CAN_Mode mode);
+//uint8_t setCANFDBitrate(CAN_Bus bus, uint32_t mainBitrate, uint32_t dataBitrate, bool bitrateSwitch);
+uint8_t startCANbus(CAN_Bus bus);
+uint8_t stopCANbus(CAN_Bus bus);
+uint8_t resetCAN(CAN_Bus bus);
+uint8_t setCAN_Termination(CAN_Bus bus, bool activated);
+CAN_ErrorCounts getCANErrorCounts(CAN_Bus bus);
 
 // CAN Communication Layer Fuction Prototypes //
-uint8_t send_message(uint8_t enum_bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t data[8]);
+uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t data[8]);
 void onReceive(CAN_Message);
 
 void trigger_CAN_RX(void);
 void trigger_CAN_TX(void);
-uint8_t add_to_CAN_RX_Queue(uint8_t enum_bus, bool EXT_ID, uint32_t ID, uint8_t DLC, uint8_t rxData[8]);
+uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, uint8_t rxData[8]);
 
 // Arithmatic Functions related to CAN Reception and Transmission //
 
@@ -113,4 +134,4 @@ char* read_char_array_from_address(const void* source, size_t length);
 void serialPrint(const char* str);
 void tx_Serial_Comms();
 
-#endif // INC_BACKEND_FUNCTIONS_H_
+#endif 
