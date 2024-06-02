@@ -22,7 +22,7 @@ uint16_t test_rpm = 500;
 char test_rpm_unit[8] = "§RPM";
 bool increment_rpm = true;
 float testvalue;
-
+CAN_ErrorCounts errors;
 
 
 
@@ -84,13 +84,6 @@ void events_200Hz(){
 /* Run 100Hz Functions here */
 void events_100Hz(){
 
-	CAN_ErrorCounts errors;
-	errors = getCANErrorCounts(CAN_1);
-	
-	char buffer1[200];
-	//snprintf(buffer1, sizeof(buffer1), "1 Rx err : %u  1 Tx err : %u\n2 Rx err : %u  2 Tx err : %u\n3 Rx err : %u  3 Tx err : %u\n", can1RxErrorCount, can1TxErrorCount, can2RxErrorCount, can2TxErrorCount, can3RxErrorCount, can3TxErrorCount);
-	snprintf(buffer1, sizeof(buffer1), "CAN1 Resets: %3u, CAN 1 Rx err : %3u, Tx err : %3u\r\n", errors.BusResetCounter, errors.RxErrorCounter, errors.TxErrorCounter);
-	serialPrint(buffer1);
 }
 
 /* Run 50Hz Functions here */
@@ -107,16 +100,14 @@ void events_50Hz(){
 			increment_rpm = true;
 		}
 	}
-	
+
 	
 }
 
 /* Run 20Hz Functions here */
 void events_20Hz(){
 	//printf(">Engine Speed:%04d %s\r\n", test_rpm, test_rpm_unit);
-	send_message(CAN_1, false, 0x001, 8, example_data_1Hz);
-	send_message(CAN_1, false, 0x021, 8, example_data_1Hz);
-	send_message(CAN_1, false, 0x041, 8, example_data_1Hz);
+
 	
 }
 
@@ -130,16 +121,25 @@ void events_10Hz(){
 
 /* Run 5Hz Functions here */
 void events_5Hz(){
-
+	send_message(CAN_1, false, 0x061, 8, example_data_1Hz);
+	errors = getCANErrorCounts(CAN_1);
+	char buffer1[200];
+	//snprintf(buffer1, sizeof(buffer1), "1 Rx err : %u  1 Tx err : %u\n2 Rx err : %u  2 Tx err : %u\n3 Rx err : %u  3 Tx err : %u\n", can1RxErrorCount, can1TxErrorCount, can2RxErrorCount, can2TxErrorCount, can3RxErrorCount, can3TxErrorCount);
+	snprintf(buffer1, sizeof(buffer1), "CAN1 Resets: %3u, CAN 1 Rx err : %3u, Tx err : %3u\r\n", errors.BusResetCounter, errors.RxErrorCounter, errors.TxErrorCounter);
+	serialPrint(buffer1);
+	
 }
 
 /* Run 2Hz Functions here */
 void events_2Hz(){
-	
+
 }
 
 /* Run 1Hz Functions here */
 void events_1Hz(){
+	send_message(CAN_1, false, 0x001, 8, example_data_1Hz);
+	send_message(CAN_1, false, 0x021, 8, example_data_1Hz);
+	send_message(CAN_1, false, 0x041, 8, example_data_1Hz);
 
 	//send_message(CAN_2, false, 0x002, 8, example_data_1Hz);
 	//send_message(CAN_3, false, 0x003, 8, example_data_1Hz);

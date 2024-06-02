@@ -58,15 +58,6 @@ FDCAN_HandleTypeDef hfdcan1;
 FDCAN_HandleTypeDef hfdcan2;
 FDCAN_HandleTypeDef hfdcan3;
 uint32_t timercounter_d2000 = 0;
-uint32_t timercounter_d1000 = 0;
-uint32_t timercounter_d500 = 0;
-uint32_t timercounter_d200 = 0;
-uint32_t timercounter_d100 = 0;
-uint32_t timercounter_d50 = 0;
-uint32_t timercounter_d20 = 0;
-uint32_t timercounter_d10 = 0;
-uint32_t timercounter_d5 = 0;
-uint32_t timercounter_d2 = 0;
 
 uint8_t x2000Hz_trigger = 0;
 uint8_t x1000Hz_trigger = 0;
@@ -543,58 +534,54 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim){
-	if (htim == &htim8){
-		timercounter_d2000 += 1;
-		x2000Hz_trigger = 1;
-		if ((timercounter_d2000 & 0x02) == 0x02){
-		    timercounter_d2000 = 0;
-			timercounter_d1000 += 1;
-			x1000Hz_trigger = 1;
-		}
-		if ((timercounter_d1000 & 0x02) == 0x02){
-			timercounter_d500 += 1;
-			x500Hz_trigger = 1;
-		}
-		if (timercounter_d1000 == 5){
-			timercounter_d1000 = 0;
-			timercounter_d200 += 1;
-			x200Hz_trigger = 1;
-		}
-		if ((timercounter_d200 & 0x02) == 0x02){
-			timercounter_d200 = 0;
-			timercounter_d100 += 1;
-			x100Hz_trigger = 1;
-		}
-		if ((timercounter_d100 & 0x02) == 0x02){
-			timercounter_d50 += 1;
-			x50Hz_trigger = 1;
-		}
-		if (timercounter_d100 == 5){
-			timercounter_d100 = 0;
-			timercounter_d20 += 1;
-			x20Hz_trigger = 1;
-		}
-		if ((timercounter_d20 & 0x02) == 0x02){
-			timercounter_d20 = 0;
-			timercounter_d10 += 1;
-			x10Hz_trigger = 1;
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+    if (htim == &htim8) {
+        timercounter_d2000 += 1;
+        x2000Hz_trigger = 1;
+
+        if (timercounter_d2000 % 2 == 0) { // 1000 Hz
+            x1000Hz_trigger = 1;
         }
-		if ((timercounter_d10 & 0x02) == 0x02){
-			timercounter_d5 += 1;
-			x5Hz_trigger = 1;
-		}
-		if (timercounter_d10 == 5){
-			timercounter_d10 = 0;
-			timercounter_d2 += 1;
-			x2Hz_trigger = 1;
-		}
-		if ((timercounter_d2 & 0x02) == 0x02){
-			timercounter_d2 = 0;
-			x1Hz_trigger = 1;
+
+        if (timercounter_d2000 % 4 == 0) { // 500 Hz
+            x500Hz_trigger = 1;
         }
-	}
+
+        if (timercounter_d2000 % 10 == 0) { // 200 Hz
+            x200Hz_trigger = 1;
+        }
+
+        if (timercounter_d2000 % 20 == 0) { // 100 Hz
+            x100Hz_trigger = 1;
+        }
+
+        if (timercounter_d2000 % 40 == 0) { // 50 Hz
+            x50Hz_trigger = 1;
+        }
+
+        if (timercounter_d2000 % 100 == 0) { // 20 Hz
+            x20Hz_trigger = 1;
+        }
+
+        if (timercounter_d2000 % 200 == 0) { // 10 Hz
+            x10Hz_trigger = 1;
+        }
+
+        if (timercounter_d2000 % 400 == 0) { // 5 Hz
+            x5Hz_trigger = 1;
+        }
+
+        if (timercounter_d2000 % 1000 == 0) { // 2 Hz
+            x2Hz_trigger = 1;
+        }
+
+        if (timercounter_d2000 % 2000 == 0) { // 1 Hz
+            timercounter_d2000 = 0;
+            x1Hz_trigger = 1;
+        }
+    }
 }
+
 
 /* USER CODE END 4 */
 
