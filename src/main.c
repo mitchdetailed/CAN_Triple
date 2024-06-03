@@ -6,7 +6,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2023 STMicroelectronics.
+  * Copyright (c) 2024 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -67,7 +67,6 @@ uint8_t x5Hz_trigger = 0;
 uint8_t x2Hz_trigger = 0;
 uint8_t x1Hz_trigger = 0;
 uint32_t timestamp = 0;
-
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -77,9 +76,9 @@ static void MX_DMA_Init(void);
 static void MX_FDCAN1_Init(void);
 static void MX_FDCAN2_Init(void);
 static void MX_FDCAN3_Init(void);
+static void MX_USART1_UART_Init(void);
 static void MX_TIM2_Init(void);
 static void MX_TIM8_Init(void);
-static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -95,6 +94,7 @@ static void MX_USART1_UART_Init(void);
   */
 int main(void)
 {
+
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -102,7 +102,7 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
- HAL_Init();
+  HAL_Init();
 
   /* USER CODE BEGIN Init */
 
@@ -118,17 +118,19 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_DMA_Init();
+
   MX_FDCAN1_Init();
   MX_FDCAN2_Init();
   MX_FDCAN3_Init();
+  MX_USART1_UART_Init();
   MX_TIM2_Init();
   MX_TIM8_Init();
-  MX_USART1_UART_Init();
   /* USER CODE BEGIN 2 */
+  // Enable fault handlers
+  SCB->SHCSR |= SCB_SHCSR_USGFAULTENA_Msk;
+  SCB->SHCSR |= SCB_SHCSR_BUSFAULTENA_Msk;
+  SCB->SHCSR |= SCB_SHCSR_MEMFAULTENA_Msk;
   events_Startup();
-  //init_PVD();
-
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -136,63 +138,62 @@ int main(void)
   while (1)
   {
 	  trigger_CAN_RX();
-	  trigger_CAN_TX();
-	  if(x2000Hz_trigger == 1){
-		  x2000Hz_trigger = 0;
-		  events_2000Hz();
-	  }
+	  	  trigger_CAN_TX();
+	  	  if(x2000Hz_trigger == 1){
+	  		  x2000Hz_trigger = 0;
+	  		  events_2000Hz();
+	  	  }
 
-	  if(x1000Hz_trigger == 1){
-		  x1000Hz_trigger = 0;
-		  events_1000Hz();
-	  }
+	  	  if(x1000Hz_trigger == 1){
+	  		  x1000Hz_trigger = 0;
+	  		  events_1000Hz();
+	  	  }
 
-	  if(x500Hz_trigger == 1){
-		  x500Hz_trigger = 0;
-		  events_500Hz();
-	  }
+	  	  if(x500Hz_trigger == 1){
+	  		  x500Hz_trigger = 0;
+	  		  events_500Hz();
+	  	  }
 
-	  if(x200Hz_trigger == 1){
-		  x200Hz_trigger = 0;
-		  events_200Hz();
-	  }
+	  	  if(x200Hz_trigger == 1){
+	  		  x200Hz_trigger = 0;
+	  		  events_200Hz();
+	  	  }
 
-	  if(x100Hz_trigger == 1){
-		  x100Hz_trigger = 0;
-		  events_100Hz();
-	  }
+	  	  if(x100Hz_trigger == 1){
+	  		  x100Hz_trigger = 0;
+	  		  events_100Hz();
+	  	  }
 
-	  if(x50Hz_trigger == 1){
-		  x50Hz_trigger = 0;
-		  events_50Hz();
-	  }
+	  	  if(x50Hz_trigger == 1){
+	  		  x50Hz_trigger = 0;
+	  		  events_50Hz();
+	  	  }
 
-	  if(x20Hz_trigger == 1){
-		  x20Hz_trigger = 0;
-		  events_20Hz();
-	  }
+	  	  if(x20Hz_trigger == 1){
+	  		  x20Hz_trigger = 0;
+	  		  events_20Hz();
+	  	  }
 
-	  if(x10Hz_trigger == 1){
-		  x10Hz_trigger = 0;
-		  events_10Hz();
-	  }
+	  	  if(x10Hz_trigger == 1){
+	  		  x10Hz_trigger = 0;
+	  		  events_10Hz();
+	  	  }
 
-	  if(x5Hz_trigger == 1){
-		  x5Hz_trigger = 0;
-		  events_5Hz();
-	  }
+	  	  if(x5Hz_trigger == 1){
+	  		  x5Hz_trigger = 0;
+	  		  events_5Hz();
+	  	  }
 
-	  if(x2Hz_trigger == 1){
-		  x2Hz_trigger = 0;
-		  events_2Hz();
-	  }
+	  	  if(x2Hz_trigger == 1){
+	  		  x2Hz_trigger = 0;
+	  		  events_2Hz();
+	  	  }
 
-	  if(x1Hz_trigger == 1){
-		  x1Hz_trigger = 0;
-		  events_1Hz();
-	  }
-    tx_Serial_Comms();
-
+	  	  if(x1Hz_trigger == 1){
+	  		  x1Hz_trigger = 0;
+	  		  events_1Hz();
+	  	  }
+	      tx_Serial_Comms();
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -419,6 +420,7 @@ static void MX_TIM2_Init(void)
 	Error_Handler();
   }
   /* USER CODE END TIM2_Init 2 */
+
 }
 
 /**
@@ -487,8 +489,7 @@ static void MX_USART1_UART_Init(void)
 
   /* USER CODE END USART1_Init 1 */
   huart1.Instance = USART1;
-  //huart1.Init.BaudRate = 115200;
-  huart1.Init.BaudRate = UART_DEBUG_BAUDRATE;
+  huart1.Init.BaudRate = 7372800;
   huart1.Init.WordLength = UART_WORDLENGTH_8B;
   huart1.Init.StopBits = UART_STOPBITS_1;
   huart1.Init.Parity = UART_PARITY_NONE;
@@ -537,7 +538,6 @@ static void MX_DMA_Init(void)
 
 }
 
-
 /**
   * @brief GPIO Initialization Function
   * @param None
@@ -579,13 +579,12 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         if (htim->Instance == TIM2){
         timestamp++;
     }
-    
-    
+
+
     else if (htim == &htim8) {
         timercounter_d2000 += 1;
         x2000Hz_trigger = 1;
@@ -633,7 +632,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
     }
 
 }
-
 
 /* USER CODE END 4 */
 

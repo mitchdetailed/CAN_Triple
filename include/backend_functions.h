@@ -15,14 +15,12 @@
 #define INC_BACKEND_FUNCTIONS_H_
 
 
-UART_HandleTypeDef huart1;
-TIM_HandleTypeDef htim2;
 extern uint32_t timestamp;
 /* Variable Declarations */
 
-uint16_t can1Reset_counter;
-uint16_t can2Reset_counter;
-uint16_t can3Reset_counter;
+extern uint16_t can1Reset_counter;
+extern uint16_t can2Reset_counter;
+extern uint16_t can3Reset_counter;
 
 typedef enum {
     CAN_1 = 1<< 0,
