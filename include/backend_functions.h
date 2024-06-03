@@ -15,8 +15,9 @@
 #define INC_BACKEND_FUNCTIONS_H_
 
 
-
-
+UART_HandleTypeDef huart1;
+TIM_HandleTypeDef htim2;
+extern uint32_t timestamp;
 /* Variable Declarations */
 
 uint16_t can1Reset_counter;
@@ -68,7 +69,7 @@ typedef struct {
 extern StringArray array0;
 extern StringArray array1;
 extern uint8_t uart_array;
-UART_HandleTypeDef huart1;
+
 
 
 /* Function Prototypes */
@@ -91,7 +92,6 @@ void trigger_CAN_TX(void);
 uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, uint8_t rxData[8]);
 
 // Arithmatic Functions related to CAN Reception and Transmission //
-
 float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset,  uint8_t decimal_places);
 int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int32_t factor, int32_t offset);
 uint32_t process_unsigned_int_value(uint32_t value, uint32_t bitmask, uint32_t factor, uint32_t offset);
@@ -102,7 +102,7 @@ int32_t map_int(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int3
 float map_float(float x, float in_min, float in_max, float out_min, float out_max);
 int32_t clamped_map_int(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max);
 float clamped_map_float(float x, float in_min, float in_max, float out_min, float out_max);
-
+float getTimestamp();
 // GPIO LED Function Prototypes //
 void writeLED(uint8_t LED_int, bool high);
 void toggleLED(uint8_t LED_int);

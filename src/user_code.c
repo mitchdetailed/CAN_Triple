@@ -31,9 +31,9 @@ void events_Startup(){
 	setupCANbus(CAN_1, 1000000, NORMAL_MODE);
 	setupCANbus(CAN_2, 1000000, NORMAL_MODE);
 	setupCANbus(CAN_3, 1000000, NORMAL_MODE);
-	setCAN_Termination(CAN_1, true);
-	setCAN_Termination(CAN_2, true);
-	setCAN_Termination(CAN_3, true);
+	setCAN_Termination(CAN_1, false);
+	setCAN_Termination(CAN_2, false);
+	setCAN_Termination(CAN_3, false);
 	startCANbus(CAN_1);
 	startCANbus(CAN_2);
 	startCANbus(CAN_3);
@@ -46,6 +46,8 @@ void events_Startup(){
 void onReceive(CAN_Message Message){
 	if (Message.Bus == CAN_1){
 		//send_message(CAN_2, Message.is_extended_id, Message.arbitration_id, Message.dlc, Message.data);
+		float test = getTimestamp();
+		printf(" Timestamp = %11.4f\r\n",test);
 	}
 	if (Message.Bus == CAN_2){
 		//send_message(CAN_3, Message.is_extended_id, Message.arbitration_id, Message.dlc, Message.data);
@@ -73,7 +75,7 @@ void events_1000Hz(){
 
 /* Run 500Hz Functions here */
 void events_500Hz(){
-
+	send_message(CAN_1, false, 0x061, 8, example_data_1Hz);
 }
 
 /* Run 200Hz Functions here */
@@ -121,13 +123,16 @@ void events_10Hz(){
 
 /* Run 5Hz Functions here */
 void events_5Hz(){
-	send_message(CAN_1, false, 0x061, 8, example_data_1Hz);
+
 	errors = getCANErrorCounts(CAN_1);
 	char buffer1[200];
-	//snprintf(buffer1, sizeof(buffer1), "1 Rx err : %u  1 Tx err : %u\n2 Rx err : %u  2 Tx err : %u\n3 Rx err : %u  3 Tx err : %u\n", can1RxErrorCount, can1TxErrorCount, can2RxErrorCount, can2TxErrorCount, can3RxErrorCount, can3TxErrorCount);
-	snprintf(buffer1, sizeof(buffer1), "CAN1 Resets: %3u, CAN 1 Rx err : %3u, Tx err : %3u\r\n", errors.BusResetCounter, errors.RxErrorCounter, errors.TxErrorCounter);
+	float ts = getTimestamp();
+	//snprintf(buffer1, sizeof(buffer1), "CAN1 Resets: %3u, CAN 1 Rx err : %3u, Tx err : %3u\r\n", errors.BusResetCounter, errors.RxErrorCounter, errors.TxErrorCounter);
+	//serialPrint(buffer1);
+	//uint32_t counter_value = __HAL_TIM_GET_COUNTER(&htim2); // Direct register access
+	//uint32_t counter_value = ((&htim2)->Instance->CNT); // Direct register access
+	snprintf(buffer1, sizeof(buffer1), "Counter value = %.4f\r\n",ts);
 	serialPrint(buffer1);
-	
 }
 
 /* Run 2Hz Functions here */

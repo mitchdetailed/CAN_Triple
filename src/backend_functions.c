@@ -11,11 +11,16 @@
 #include "user_code.h"
 #include "backend_functions.h"
 #include "main.h"
+#include "stm32g4xx_hal.h"
 
 extern FDCAN_HandleTypeDef hfdcan1;
 extern FDCAN_HandleTypeDef hfdcan2;
 extern FDCAN_HandleTypeDef hfdcan3;
-		uint32_t testvalue;
+extern TIM_HandleTypeDef htim2;
+// for testing timer
+extern TIM_HandleTypeDef htim8;
+
+uint32_t testvalue;
 struct q_CAN_Msg
 {
 	bool EXT_ID;
@@ -1443,4 +1448,14 @@ float clamped_map_float(float x, float in_min, float in_max, float out_min, floa
         x = in_max;
     }
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+
+float getTimestamp()
+{
+
+    uint32_t counter_value = __HAL_TIM_GET_COUNTER(&htim2); // Direct register access
+	float newcv = ((float)counter_value)/10000.0f;
+	
+	return newcv;
 }
