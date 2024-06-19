@@ -10,7 +10,7 @@
  ******************************************************************************
  * @attention
  *
- * Copyright (c) 2020-2023 STMicroelectronics.
+ * Copyright (c) 2020-2024 STMicroelectronics.
  * All rights reserved.
  *
  * This software is licensed under terms that can be found in the LICENSE file
@@ -29,11 +29,6 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/times.h>
-
-//#include "main.h"
-//#include <stdio.h>
-//#include <errno.h>
-//#include <sys/unistd.h> // STDOUT_FILENO, STDERR_FILENO
 
 
 /* Variables */
@@ -93,26 +88,6 @@ __attribute__((weak)) int _write(int file, char *ptr, int len)
   }
   return len;
 }
-
-
-/* Added for fprint functionality.. 04-20-2024 */
-/*
-extern UART_HandleTypeDef huart1; // UART handle
-
-int _write(int file, char *data, int len) {
-    if ((file != STDOUT_FILENO) && (file != STDERR_FILENO)) {
-        errno = EBADF;
-        return -1;
-    }
-
-    // Transmit data over UART1
-    HAL_StatusTypeDef status =
-        HAL_UART_Transmit(&huart1, (uint8_t*)data, len, 100);
-
-    return (status == HAL_OK ? len : 0);
-}
-
-*/
 
 int _close(int file)
 {

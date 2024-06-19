@@ -11,11 +11,9 @@
 #include "user_code.h"
 #include "backend_functions.h"
 #include "main.h"
+#include "stm32g4xx_hal.h"
 
-extern FDCAN_HandleTypeDef hfdcan1;
-extern FDCAN_HandleTypeDef hfdcan2;
-extern FDCAN_HandleTypeDef hfdcan3;
-		uint32_t testvalue;
+	
 struct q_CAN_Msg
 {
 	bool EXT_ID;
@@ -104,6 +102,9 @@ StringArray array1 ={ .array ={0}, .length = 0 };
 uint8_t uart_array = 0;
 bool uart_sending = false;
 
+uint16_t can1Reset_counter = 0; // Define the variable
+uint16_t can2Reset_counter = 0; // Define the variable
+uint16_t can3Reset_counter = 0; // Define the variable
 /* Sets CANbus Bitrate
 1M, 500k, 250k, 125k validated */
 
@@ -1443,4 +1444,14 @@ float clamped_map_float(float x, float in_min, float in_max, float out_min, floa
         x = in_max;
     }
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
+
+float getTimestamp()
+{
+
+    uint32_t counter_value = ((&htim2)->Instance->CNT); // Direct register access
+	float newcv = (((float)counter_value)/10000.0f);
+	
+	return newcv;
 }

@@ -7,7 +7,7 @@
   ******************************************************************************
   * @attention
   *
-  * Copyright (c) 2023 STMicroelectronics.
+  * Copyright (c) 2024 STMicroelectronics.
   * All rights reserved.
   *
   * This software is licensed under terms that can be found in the LICENSE file
@@ -36,7 +36,14 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
+extern FDCAN_HandleTypeDef hfdcan1;
+extern FDCAN_HandleTypeDef hfdcan2;
+extern FDCAN_HandleTypeDef hfdcan3;
 
+extern TIM_HandleTypeDef htim2;
+extern TIM_HandleTypeDef htim8;
+
+extern UART_HandleTypeDef huart1;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/

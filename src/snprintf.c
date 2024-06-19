@@ -34,6 +34,7 @@
 #include <stdint.h>
 
 #include "snprintf.h"
+#include "main.h"
 #include "backend_functions.h"
 
 
