@@ -223,7 +223,7 @@ int32_t endingvalue = roundfloat_to_int32(startingvalue, 4);
 ```
 ---
 ### Debugging with print statements
-Debugging using print statements is offered in a few ways. while printf is supported, it is deprecated and recommend using a char array, snprintf, and serialPrint() for your code.
+Debugging using print statements is offered in a few ways. printf is supported,as well as using a char array, snprintf, and serialPrint().
 
 ```C
 float engine_Speed = 1234.567;
