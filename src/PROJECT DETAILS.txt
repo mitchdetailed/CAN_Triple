@@ -1,0 +1,21 @@
+/* Project Details....
+ * CAN 1 = BPC1100  1 Mbps Terminated.
+ * CAN 2 = Haltech 1 Mbps UNTerminated.
+ * CAN 3 = Unused...
+ *
+ *	Haltech IOBox B Outputs :
+ *	AV1 = BPC1100 Input Voltage 			0v = 0v					5v = 22.44V
+ *  AV2 = BPC1100 Input Current 			0v = 0a					5v = 130a
+ *	AV3 = BPC1100 Output Current 			0v = 0a 				5v = 54.672a
+ *	AV4 = BPC1100 Output Current Average	0v = 0a 				5v = 56.672a
+ *
+ *	DPI1 DC = Board Temp					0.0% = 0C				100.0% = 150C 
+ *	DPI2 DC = phase							0.0% = 0 step			100.0% = 255 steps
+ *	DPI3 DC = PWM Duty Input				0.0% = 0%				100.0% = 100% 
+ *	DPI4 DC = Pump PWM Duty Output			0.0% = 0%				100.0% = 100%
+
+ *	DPI1 Period = Flow Rate					0.01ms = 200 Liters/hr	50.00ms = 1400 Liters/hr
+ *	DPI2 Period = Flow rate Average			0.01ms = 200 Liters/hr	50.00ms = 1400 Liters/hr
+ *	DPI3 Period = Status					ms = Status 1:1
+ *	DPI4 Period = Transmit Counter			increments.. 0.01-50.00ms rolling counter.
+ */
