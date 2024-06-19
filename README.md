@@ -231,6 +231,7 @@ float vehicle_speed = 55.2;
 int32_t engine_coolant_temp = 98;
 char test = "Test_Message";
 char debug_buffer[100];
+printf("this is a printf statement..");
 snprintf(debug_buffer, sizeof(debug_buffer), "Engine Speed: %5.1f, Vehicle Speed:%2.1f,Coolant Temp = %i,  %s", engine_Speed, vehicle_speed,engine_coolant_temp,  test);
 serialPrint(debug_buffer);
 // "Engine Speed: 1234.6, Vehicle Speed:55.2,Coolant Temp = 98,  Test_Message" would be printed to terminal..
