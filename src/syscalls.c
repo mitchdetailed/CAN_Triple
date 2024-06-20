@@ -29,6 +29,25 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/times.h>
+#include "stm32g4xx_hal.h"
+#include <stdbool.h>
+#include <string.h>
+#include "user_code.h"
+// Global variables for UART communication
+extern UART_HandleTypeDef huart1;
+extern uint8_t uart_array;
+extern volatile bool uart_sending;
+
+typedef struct {
+    uint8_t array[UART_MSG_BUFFER_SIZE];
+    uint16_t length;
+} UART_Array;
+
+extern UART_Array array0;
+extern UART_Array array1;
+
+void serialPrint(const char *str);
+void tx_Serial_Comms(void);
 
 
 /* Variables */

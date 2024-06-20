@@ -1404,7 +1404,6 @@ uint32_t process_unsigned_int_value(uint32_t value, uint32_t bitmask, uint32_t f
 uint32_t process_raw_value(uint32_t value, uint32_t bitmask){
     // Apply the bitmask to the value
     uint32_t result = value & bitmask;
-
     // Calculate the number of bits to rightshift by finding the position of the first bit set in the bitmask
     uint32_t rightshift = 0;
     uint32_t temp_bitmask = bitmask;
@@ -1412,20 +1411,46 @@ uint32_t process_raw_value(uint32_t value, uint32_t bitmask){
         temp_bitmask >>= 1;
         rightshift++;
     }
-
     // Rightshift the result by the calculated number of bits
     result >>= rightshift;
-
     return result;
 }
 
-
+/**
+ * \brief Scales (Maps) an integer value to fixed integer scalings (extrapolates)
+ * \param x : Current value.
+ * \param in_min : the input scaling input minimum.
+ * \param in_max : the input scaling input maximum.
+ * \param out_min : the output scaling input minimum.
+ * \param out_max : the output scaling input maximum.
+ * \return int32_t Value
+ */
 int32_t map_int(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max){
 	return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
+
+/**
+ * \brief Scales (Maps) an floating point value to scalings (extrapolates)
+ * \param x : Current value.
+ * \param in_min : the input scaling input minimum.
+ * \param in_max : the input scaling input maximum.
+ * \param out_min : the output scaling input minimum.
+ * \param out_max : the output scaling input maximum.
+ * \return float Value
+ */
 float map_float(float x, float in_min, float in_max, float out_min, float out_max){
 	return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
+
+/**
+ * \brief Scales (Maps) an integer value to fixed integer scalings (constrains to min and max output)
+ * \param x : Current value.
+ * \param in_min : the input scaling input minimum.
+ * \param in_max : the input scaling input maximum.
+ * \param out_min : the output scaling input minimum.
+ * \param out_max : the output scaling input maximum.
+ * \return int32_t Value
+ */
 int32_t clamped_map_int(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max){
 	if(x < in_min){
         x = in_min;
@@ -1436,6 +1461,15 @@ int32_t clamped_map_int(int32_t x, int32_t in_min, int32_t in_max, int32_t out_m
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+/**
+ * \brief Scales (Maps) an floating point value to fixed integer scalings (constrains to min and max output)
+ * \param x : Current value.
+ * \param in_min : the input scaling input minimum.
+ * \param in_max : the input scaling input maximum.
+ * \param out_min : the output scaling input minimum.
+ * \param out_max : the output scaling input maximum.
+ * \return float Value
+ */
 float clamped_map_float(float x, float in_min, float in_max, float out_min, float out_max){
 	if(x < in_min){
         x = in_min;
@@ -1446,12 +1480,11 @@ float clamped_map_float(float x, float in_min, float in_max, float out_min, floa
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
-
-float getTimestamp()
-{
-
+/**
+ * \brief Gets a timestamp to 0.0001 seconds..
+ */
+float getTimestamp(){
     uint32_t counter_value = ((&htim2)->Instance->CNT); // Direct register access
 	float newcv = (((float)counter_value)/10000.0f);
-	
 	return newcv;
 }

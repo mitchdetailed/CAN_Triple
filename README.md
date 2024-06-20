@@ -223,7 +223,7 @@ int32_t endingvalue = roundfloat_to_int32(startingvalue, 4);
 ```
 ---
 ### Debugging with print statements
-Debugging using print statements is offered in a few ways. printf is supported,as well as using a char array, snprintf, and serialPrint().
+Debugging using print statements is offered in a few ways. while printf is supported, it is deprecated and recommend using a char array, snprintf, and serialPrint() for your code.
 
 ```C
 float engine_Speed = 1234.567;
@@ -231,7 +231,6 @@ float vehicle_speed = 55.2;
 int32_t engine_coolant_temp = 98;
 char test = "Test_Message";
 char debug_buffer[100];
-printf("this is a printf statement..");
 snprintf(debug_buffer, sizeof(debug_buffer), "Engine Speed: %5.1f, Vehicle Speed:%2.1f,Coolant Temp = %i,  %s", engine_Speed, vehicle_speed,engine_coolant_temp,  test);
 serialPrint(debug_buffer);
 // "Engine Speed: 1234.6, Vehicle Speed:55.2,Coolant Temp = 98,  Test_Message" would be printed to terminal..

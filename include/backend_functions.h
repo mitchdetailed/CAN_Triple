@@ -102,8 +102,8 @@ int32_t clamped_map_int(int32_t x, int32_t in_min, int32_t in_max, int32_t out_m
 float clamped_map_float(float x, float in_min, float in_max, float out_min, float out_max);
 float getTimestamp();
 // GPIO LED Function Prototypes //
-void writeLED(uint8_t LED_int, bool high);
-void toggleLED(uint8_t LED_int);
+void writeLED(gpio_LED led, bool high);
+void toggleLED(gpio_LED led);
 
 // CRC Checksum Calculation Function Prototypes //
 uint8_t reflect8(uint8_t data);
@@ -131,5 +131,6 @@ char* read_char_array_from_address(const void* source, size_t length);
 // UART Debugger Function Prototypes //
 void serialPrint(const char* str);
 void tx_Serial_Comms();
+void onSerialReceive(uint8_t *serialMessage);
 
 #endif 

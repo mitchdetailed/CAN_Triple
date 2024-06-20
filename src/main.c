@@ -23,6 +23,7 @@
 /* USER CODE BEGIN Includes */
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 #include "user_code.h"
 #include "backend_functions.h"
 /* USER CODE END Includes */
@@ -52,6 +53,7 @@ TIM_HandleTypeDef htim8;
 
 UART_HandleTypeDef huart1;
 DMA_HandleTypeDef hdma_usart1_tx;
+DMA_HandleTypeDef hdma_usart1_rx;
 
 /* USER CODE BEGIN PV */
 uint32_t timercounter_d2000 = 0;
@@ -67,6 +69,13 @@ uint8_t x5Hz_trigger = 0;
 uint8_t x2Hz_trigger = 0;
 uint8_t x1Hz_trigger = 0;
 uint32_t timestamp = 0;
+
+
+uint8_t rxBuffer[256];
+uint8_t processData = 0;  // Flag to indicate data processing
+uint8_t dataBuffer[256];
+volatile uint16_t dataSize = 0;
+volatile uint8_t dataReady = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -138,7 +147,14 @@ int main(void)
   while (1)
   {
 	  trigger_CAN_RX();
-	  	  trigger_CAN_TX();
+	  trigger_CAN_TX();
+    if (dataReady)
+    {
+        // Process the received data
+      onSerialReceive(dataBuffer);
+        // Clear the flag
+      dataReady = 0;
+    }
 	  	  if(x2000Hz_trigger == 1){
 	  		  x2000Hz_trigger = 0;
 	  		  events_2000Hz();
@@ -495,7 +511,7 @@ static void MX_USART1_UART_Init(void)
   huart1.Init.Parity = UART_PARITY_NONE;
   huart1.Init.Mode = UART_MODE_TX_RX;
   huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
-  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_8;
   huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
   huart1.Init.ClockPrescaler = UART_PRESCALER_DIV1;
   huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
@@ -516,6 +532,9 @@ static void MX_USART1_UART_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN USART1_Init 2 */
+  __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
+  HAL_UARTEx_ReceiveToIdle_DMA(&huart1, rxBuffer, sizeof(rxBuffer));
+
 
   /* USER CODE END USART1_Init 2 */
 
@@ -532,6 +551,9 @@ static void MX_DMA_Init(void)
   __HAL_RCC_DMA1_CLK_ENABLE();
 
   /* DMA interrupt init */
+  /* DMA1_Channel5_IRQn interrupt configuration */
+  HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA1_Channel5_IRQn);
   /* DMA1_Channel6_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
@@ -584,7 +606,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
         timestamp++;
     }
 
-
     else if (htim == &htim8) {
         timercounter_d2000 += 1;
         x2000Hz_trigger = 1;
@@ -630,9 +651,68 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
             x1Hz_trigger = 1;
         }
     }
-
 }
 
+void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
+{
+    if (huart->Instance == USART1)
+    {
+        // Ensure Size does not exceed the buffer
+        if (Size <= 256)
+        {
+            // Copy data from rxBuffer to dataBuffer
+            memcpy(dataBuffer, rxBuffer, Size);
+
+            // Append null terminator to dataBuffer
+            dataBuffer[Size] = '\0';
+
+            // Set the dataReady flag
+            dataReady = 1;
+
+
+            // Clear the rxBuffer after processing the data
+            memset(rxBuffer, 0, 256);
+
+            // Restart DMA reception
+            __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
+            if (HAL_UARTEx_ReceiveToIdle_DMA(&huart1, rxBuffer, sizeof(rxBuffer)) != HAL_OK)
+            {
+                // Handle error
+                
+            }
+        }
+    }
+}
+
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
+    if (huart->Instance == USART1) {
+        // Check the error code and handle specific errors
+        if (huart->ErrorCode & HAL_UART_ERROR_ORE) {
+            // Overrun error handling
+            __HAL_UART_CLEAR_OREFLAG(huart);
+        }
+        if (huart->ErrorCode & HAL_UART_ERROR_NE) {
+            // Noise error handling
+            __HAL_UART_CLEAR_NEFLAG(huart);
+        }
+        if (huart->ErrorCode & HAL_UART_ERROR_FE) {
+            // Framing error handling
+            __HAL_UART_CLEAR_FEFLAG(huart);
+        }
+        if (huart->ErrorCode & HAL_UART_ERROR_PE) {
+            // Parity error handling
+            __HAL_UART_CLEAR_PEFLAG(huart);
+        }
+
+        // Optionally, reset the UART state and reinitialize
+        HAL_UART_Abort(huart);
+        HAL_UART_Init(huart);
+
+        // Restart UART receive interrupt if needed
+        __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
+        HAL_UARTEx_ReceiveToIdle_DMA(huart, rxBuffer, sizeof(rxBuffer));
+    }
+}
 /* USER CODE END 4 */
 
 /**
@@ -644,6 +724,8 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
+      // Reset the system
+    //NVIC_SystemReset();
   while (1)
   {
   }

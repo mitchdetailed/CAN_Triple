@@ -97,6 +97,12 @@
 #define PRINTF_SUPPORT_PTRDIFF_T
 #endif
 
+
+///////////////////////////////////////////////////////////////////////////////
+#define LOCAL_BUFFER_SIZE 256  // Define an appropriate buffer size
+// Define the local buffer and buffer index
+static char local_buffer[LOCAL_BUFFER_SIZE];
+static uint16_t buffer_index = 0;
 ///////////////////////////////////////////////////////////////////////////////
 
 // internal flag definitions
@@ -917,5 +923,49 @@ int fctprintf(void (*out)(char character, void* arg), void* arg, const char* for
 
 
 void _putchar(char character){
-  HAL_UART_Transmit(&huart1,(uint8_t *)&character,1,100);
+  // Add character to local buffer
+    local_buffer[buffer_index++] = character;
+
+    // If buffer is full or character is a newline, send the buffer
+    if (buffer_index >= LOCAL_BUFFER_SIZE || character == '\n') {
+        local_buffer[buffer_index] = '\0';  // Null-terminate the string
+        serialPrint(local_buffer);          // Send the buffer
+        buffer_index = 0;                   // Reset buffer index
+    }
+}
+
+
+// _write function implementation
+int _write(int file, char *ptr, int len)
+{
+    // Redirect output to the appropriate buffer
+    if (uart_array == 0)
+    {
+        if (array0.length + len < UART_MSG_BUFFER_SIZE)
+        {
+            memcpy(&array0.array[array0.length], ptr, len);
+            array0.length += len;
+        }
+        else
+        {
+            // Handle overflow, e.g., log error
+        }
+    }
+    else if (uart_array == 1)
+    {
+        if (array1.length + len < UART_MSG_BUFFER_SIZE)
+        {
+            memcpy(&array1.array[array1.length], ptr, len);
+            array1.length += len;
+        }
+        else
+        {
+            // Handle overflow, e.g., log error
+        }
+    }
+    else
+    {
+        // Handle invalid array_selector, e.g., log error
+    }
+    return len;
 }
