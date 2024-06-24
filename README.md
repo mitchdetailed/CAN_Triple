@@ -8,6 +8,10 @@ The CAN Triple is designed to simplify the scope of interfacing multiple CAN Bus
 - Visual Studio Code (VSCode) [Download Link](https://code.visualstudio.com/)
 - PlatformIO extension for VSCode [Download Link](https://platformio.org/platformio-ide)
 
+## Value Added Extensions within VS Code
+- Teleplot : A plotting tool for UART messages
+- Serial Monitor : Easy to use Serial Monitor
+
 ## Code Function Calls for user_code.c
 
 ### Setting CAN Bitrate : 
