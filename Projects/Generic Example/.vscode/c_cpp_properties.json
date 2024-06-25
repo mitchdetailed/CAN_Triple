@@ -1,0 +1,118 @@
+//
+// !!! WARNING !!! AUTO-GENERATED FILE!
+// PLEASE DO NOT MODIFY IT AND USE "platformio.ini":
+// https://docs.platformio.org/page/projectconf/section_env_build.html#build-flags
+//
+{
+    "configurations": [
+        {
+            "name": "PlatformIO",
+            "includePath": [
+                "C:/Users/mitch/Desktop/CAN_Triple-1/include",
+                "C:/Users/mitch/Desktop/CAN_Triple-1/src",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/CMSIS/Include",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/CMSIS/Device/ST/STM32G4xx/Include",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/STM32G4xx_HAL_Driver/Inc",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/STM32G4xx_HAL_Driver/Src",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/CMSIS/DSP/Include",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/BSP/Components/Common",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/BSP/Components/hx8347d",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/BSP/Components/mfxstm32l152",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/BSP/Components/mt25ql512abb",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/BSP/Components/st7735",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/BSP/Components/stts751",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/BSP/Components/wm8994",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/BSP/Adafruit_Shield",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Utilities/Fonts",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Utilities/GUI_INTERFACE",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Utilities/LCD",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Utilities/TRACER_EMB",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Core/Inc",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Core/Src",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/AUDIO/Inc",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/AUDIO/Src",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/BillBoard/Inc",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/BillBoard/Src",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/CDC_ECM/Inc",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/CDC_ECM/Src",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/CDC_RNDIS/Inc",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/CDC_RNDIS/Src",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/CustomHID/Inc",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/CustomHID/Src",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Inc",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Src",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/HID/Inc",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/HID/Src",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Inc",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/VIDEO/Inc",
+                "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/VIDEO/Src",
+                ""
+            ],
+            "browse": {
+                "limitSymbolsToIncludedHeaders": true,
+                "path": [
+                    "C:/Users/mitch/Desktop/CAN_Triple-1/include",
+                    "C:/Users/mitch/Desktop/CAN_Triple-1/src",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/CMSIS/Include",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/CMSIS/Device/ST/STM32G4xx/Include",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/STM32G4xx_HAL_Driver/Inc",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/STM32G4xx_HAL_Driver/Src",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/CMSIS/DSP/Include",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/BSP/Components/Common",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/BSP/Components/hx8347d",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/BSP/Components/mfxstm32l152",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/BSP/Components/mt25ql512abb",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/BSP/Components/st7735",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/BSP/Components/stts751",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/BSP/Components/wm8994",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/BSP/Adafruit_Shield",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Utilities/Fonts",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Utilities/GUI_INTERFACE",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Utilities/LCD",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Utilities/TRACER_EMB",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Core/Inc",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Core/Src",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/AUDIO/Inc",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/AUDIO/Src",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/BillBoard/Inc",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/BillBoard/Src",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Inc",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/CDC/Src",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/CDC_ECM/Inc",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/CDC_ECM/Src",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/CDC_RNDIS/Inc",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/CDC_RNDIS/Src",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/CustomHID/Inc",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/CustomHID/Src",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Inc",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/DFU/Src",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/HID/Inc",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/HID/Src",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Inc",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/MSC/Src",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/VIDEO/Inc",
+                    "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Middlewares/ST/STM32_USB_Device_Library/Class/VIDEO/Src",
+                    ""
+                ]
+            },
+            "defines": [
+                "PLATFORMIO=60115",
+                "STM32G4xx",
+                "STM32G473xx",
+                "USE_HAL_DRIVER",
+                "F_CPU=170000000L",
+                ""
+            ],
+            "compilerPath": "C:/Users/mitch/.platformio/packages/toolchain-gccarmnoneeabi@1.70201.0/bin/arm-none-eabi-gcc.exe",
+            "compilerArgs": [
+                "-mthumb",
+                "-mcpu=cortex-m4",
+                ""
+            ]
+        }
+    ],
+    "version": 4
+}
