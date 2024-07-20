@@ -54,6 +54,7 @@ TIM_HandleTypeDef htim8;
 UART_HandleTypeDef huart1;
 DMA_HandleTypeDef hdma_usart1_tx;
 DMA_HandleTypeDef hdma_usart1_rx;
+bool uart_abort = false;
 
 /* USER CODE BEGIN PV */
 uint32_t timercounter_d2000 = 0;
@@ -150,9 +151,11 @@ int main(void)
 	  trigger_CAN_TX();
     if (dataReady)
     {
-        // Process the received data
-      onSerialReceive(dataBuffer);
-        // Clear the flag
+      if (uart_abort == false){
+          // Process the received data
+        onSerialReceive(dataBuffer);
+          // Clear the flag
+      }  
       dataReady = 0;
     }
 	  	  if(x2000Hz_trigger == 1){
@@ -208,8 +211,19 @@ int main(void)
 	  	  if(x1Hz_trigger == 1){
 	  		  x1Hz_trigger = 0;
 	  		  events_1Hz();
+          if(uart_abort == true){
+            
+            HAL_UART_Init(&huart1);
+
+            // Restart UART receive interrupt if needed
+            __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
+            HAL_UARTEx_ReceiveToIdle_DMA(&huart1, rxBuffer, sizeof(rxBuffer));
+
+          }
 	  	  }
-	      tx_Serial_Comms();
+        if(uart_abort == false){
+	        tx_Serial_Comms();
+        }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -705,12 +719,19 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
         }
 
         // Optionally, reset the UART state and reinitialize
+        HAL_DMA_Abort(&hdma_usart1_rx);
         HAL_UART_Abort(huart);
-        HAL_UART_Init(huart);
+        
 
-        // Restart UART receive interrupt if needed
-        __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
-        HAL_UARTEx_ReceiveToIdle_DMA(huart, rxBuffer, sizeof(rxBuffer));
+        /////////////////////// exception
+        if(uart_abort == false){
+          HAL_UART_Init(huart);
+
+          // Restart UART receive interrupt if needed
+          __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
+          HAL_UARTEx_ReceiveToIdle_DMA(huart, rxBuffer, sizeof(rxBuffer));
+        }
+        uart_abort = true;
     }
 }
 /* USER CODE END 4 */
