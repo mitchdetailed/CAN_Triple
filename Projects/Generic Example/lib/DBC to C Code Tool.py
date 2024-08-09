@@ -80,9 +80,9 @@ def generate_signal_code(signal_info, array):
     is_signed = 'true' if isSigned else 'false'
     endianness = 'big' if is_Big_Endian else 'little'
 
-    if (sig_scale > 0 and sig_scale == int(sig_scale) and sig_offset >= 0 and not isSigned):
+    if (sig_scale > 0 and sig_scale == int(sig_scale) and sig_offset >= 0 and not isSigned and not isFloat):
         typecast = 'uint32_t'
-    elif sig_scale == int(sig_scale) and sig_offset == int(sig_offset):
+    elif (sig_scale == int(sig_scale) and sig_offset == int(sig_offset) and not isFloat):
         typecast = 'int32_t'
     else:
         typecast = 'float'
@@ -128,7 +128,9 @@ def generate_signal_code(signal_info, array):
     raw_value_expression = " | ".join(raw_value_parts)
 
     # Determine the appropriate processing function to use
-    if isinstance(sig_scale, float) or round(sig_offset, 3) != sig_offset:
+    if isFloat == True:
+        process_function = "process_ieee754"
+    elif isinstance(sig_scale, float) or round(sig_offset, 3) != sig_offset:
         process_function = "process_float_value"
     elif not isSigned and sig_scale == 1 and sig_offset == 0:
         process_function = "process_raw_value"
@@ -137,6 +139,8 @@ def generate_signal_code(signal_info, array):
     else:
         process_function = "process_int_value"
 
+    if process_function == "process_ieee754":
+        c_code += f"{indent}{sig_name} = {process_function}({raw_value_expression}, 0x{true_bitmask:X}, {is_signed}, {sig_scale}, {sig_offset}, 3);\n\n"
     if process_function == "process_float_value":
         c_code += f"{indent}{sig_name} = {process_function}({raw_value_expression}, 0x{true_bitmask:X}, {is_signed}, {sig_scale}, {sig_offset}, 3);\n\n"
     elif process_function == "process_raw_value":
