@@ -9,6 +9,10 @@
 #include "main.h"
 #include "snprintf.h"
 #include <string.h>
+// for the realdash function 
+#include <stdlib.h>
+#include <unistd.h>
+// end includes for realdash function
 #include "stm32g4xx_hal.h"
 
 /* End File Includes */
@@ -21,15 +25,15 @@ uint8_t countervalue = 0;
 
 /* Startup Functions */
 void events_Startup(){
-	setupCANbus(CAN_1, 1000000, NORMAL_MODE);
+	setupCANbus(CAN_1, 500000, NORMAL_MODE);
 	setupCANbus(CAN_2, 1000000, NORMAL_MODE);
 	setupCANbus(CAN_3, 1000000, NORMAL_MODE);
-	setCAN_Termination(CAN_1, true);
-	setCAN_Termination(CAN_2, true);
-	setCAN_Termination(CAN_3, true);
+	setCAN_Termination(CAN_1, false);
+	setCAN_Termination(CAN_2, false);
+	setCAN_Termination(CAN_3, false);
 	startCANbus(CAN_1);
-	startCANbus(CAN_2);
-	startCANbus(CAN_3);
+	//startCANbus(CAN_2);
+	//startCANbus(CAN_3);
 }
 /* End Startup Functions */
 
@@ -42,15 +46,39 @@ void onSerialReceive(uint8_t *serialMessage){
 
 void onReceive(CAN_Message Message){
 	// What do you want to do when you receive a CAN message.. ?	
-	    char formatted_message[50];
-    format_CAN_message(&Message, formatted_message, sizeof(formatted_message));
-	printf("%s\r\n", formatted_message);
+	    //char formatted_message[50];
+    //format_CAN_message(&Message, formatted_message, sizeof(formatted_message));
+	//printf("%s\r\n", formatted_message);
 	if (Message.Bus == CAN_1){
-		send_message(CAN_2,Message.is_extended_id,Message.arbitration_id,Message.dlc,Message.data);
+		
+
+  		uint8_t serialBlockTag[4] = { 0x44, 0x33, 0x22, 0x11 };
+  		serialWrite((const uint8_t*)&serialBlockTag,4);
+
+  		// the CAN frame id number (as 32bit little endian value)
+  		serialWrite((const uint8_t*)&Message.arbitration_id,4);
+
+  		// CAN frame payload
+		serialWrite(Message.data,8);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		//send_message(CAN_2,Message.is_extended_id,Message.arbitration_id,Message.dlc,Message.data);
 		
 	}
 	if (Message.Bus == CAN_2){
-		send_message(CAN_1,Message.is_extended_id,Message.arbitration_id,Message.dlc,Message.data);
+		//send_message(CAN_1,Message.is_extended_id,Message.arbitration_id,Message.dlc,Message.data);
 	}
 	if (Message.Bus == CAN_3){
 

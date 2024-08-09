@@ -1,4 +1,7 @@
 {
     "doxdocgen.generic.authorEmail": "mitchminton@gmail.com",
-    "doxdocgen.generic.useGitUserEmail": true
+    "doxdocgen.generic.useGitUserEmail": true,
+    "files.associations": {
+        "stm32g4xx_hal.h": "c"
+    }
 }
