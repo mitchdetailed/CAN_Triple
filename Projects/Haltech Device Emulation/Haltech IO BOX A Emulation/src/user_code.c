@@ -51,6 +51,10 @@ CAN_ErrorCounts errors;
 	float haltech_IO_Box_A_DPO2_Duty = 0.0f; // min 0.0%, max 100.0%, resolution 0.1% //
 	float haltech_IO_Box_A_DPO3_Duty = 0.0f; // min 0.0%, max 100.0%, resolution 0.1% //
 	float haltech_IO_Box_A_DPO4_Duty = 0.0f; // min 0.0%, max 100.0%, resolution 0.1% //
+	float haltech_IO_Box_A_DP01_Period = 0.0f; // min 0.00ms, max 50.00ms, resolution 0.01ms //
+	float haltech_IO_Box_A_DPO2_Period = 0.0f; // min 0.00ms, max 50.00ms, resolution 0.01ms //
+	float haltech_IO_Box_A_DPO3_Period = 0.0f; // min 0.00ms, max 50.00ms, resolution 0.01ms //
+	float haltech_IO_Box_A_DPO4_Period = 0.0f; // min 0.00ms, max 50.00ms, resolution 0.01ms //
 	uint32_t haltech_IO_Box_A_DP01_Hz = 0; // min 0 Hz, max 12000 Hz, resolution Variable based on Pulse Width, min 1 Hz after 300 hz, resolution will start reducing.. //
 	uint32_t haltech_IO_Box_A_DPO2_Hz = 0; // min 0 Hz, max 12000 Hz, resolution Variable based on Pulse Width, min 1 Hz after 300 hz, resolution will start reducing.. //
 	uint32_t haltech_IO_Box_A_DPO3_Hz = 0; // min 0 Hz, max 12000 Hz, resolution Variable based on Pulse Width, min 1 Hz after 300 hz, resolution will start reducing.. //
@@ -120,11 +124,13 @@ void onReceive(CAN_Message Message){
 					haltech_IO_Box_A_DPO1_Error = (Message.data[1] & 0x10)>>4;
 					haltech_IO_Box_A_AVI1_Pullup = (Message.data[1] & 0x08)>>3;
 					haltech_IO_Box_A_DP01_Hz = period_10uS_to_frequency_Hz((Message.data[2]<<8)+Message.data[3]);
+					haltech_IO_Box_A_DP01_Period = (float)((Message.data[2]<<8)+Message.data[3])/10;
 					haltech_IO_Box_A_DPO2_Duty = (float)((Message.data[4]<<2) + (Message.data[5]>>6))/10;
 					haltech_IO_Box_A_DPO2_Active = (Message.data[5] & 0x20)>>5;
 					haltech_IO_Box_A_DPO2_Error = (Message.data[5] & 0x10)>>4;
 					haltech_IO_Box_A_AVI2_Pullup = (Message.data[5] & 0x08)>>3;
 					haltech_IO_Box_A_DPO2_Hz = period_10uS_to_frequency_Hz((Message.data[6]<<8)+Message.data[7]);
+					haltech_IO_Box_A_DPO2_Period = (float)((Message.data[6]<<8)+Message.data[7])/10;
 				}
 				else if(Message.arbitration_id == 0x2D2){
 					haltech_IO_Box_A_DPO3_Duty = (float)((Message.data[0]<<2) + (Message.data[1]>>6))/10;
@@ -132,11 +138,13 @@ void onReceive(CAN_Message Message){
 					haltech_IO_Box_A_DPO3_Error = (Message.data[1] & 0x10)>>4;
 					haltech_IO_Box_A_AVI3_Pullup = (Message.data[1] & 0x08)>>3;
 					haltech_IO_Box_A_DPO3_Hz = period_10uS_to_frequency_Hz((Message.data[2]<<8)+Message.data[3]);
+					haltech_IO_Box_A_DPO3_Period = (float)((Message.data[6]<<8)+Message.data[7])/10;
 					haltech_IO_Box_A_DPO4_Duty = (float)((Message.data[4]<<2) + (Message.data[5]>>6))/10;
 					haltech_IO_Box_A_DPO4_Active = (Message.data[5] & 0x20)>>5;
 					haltech_IO_Box_A_DPO4_Error = (Message.data[5] & 0x10)>>4;
 					haltech_IO_Box_A_AVI4_Pullup = (Message.data[5] & 0x08)>>3;
 					haltech_IO_Box_A_DPO4_Hz = period_10uS_to_frequency_Hz((Message.data[6]<<8)+Message.data[7]);
+					haltech_IO_Box_A_DPO4_Period = (float)((Message.data[6]<<8)+Message.data[7])/10;
 				}
 			}
 		}
