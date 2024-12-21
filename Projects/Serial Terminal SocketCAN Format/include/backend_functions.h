@@ -100,6 +100,9 @@ int32_t map_int(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int3
 float map_float(float x, float in_min, float in_max, float out_min, float out_max);
 int32_t clamped_map_int(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max);
 float clamped_map_float(float x, float in_min, float in_max, float out_min, float out_max);
+uint32_t frequency_Hz_to_period_10uS(uint32_t frequency_value);
+uint32_t period_10uS_to_frequency_Hz(uint32_t period_value);
+
 float getTimestamp();
 // GPIO LED Function Prototypes //
 void writeLED(gpio_LED led, bool high);

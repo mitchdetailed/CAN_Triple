@@ -1534,6 +1534,32 @@ float clamped_map_float(float x, float in_min, float in_max, float out_min, floa
     return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+
+/**
+ * \brief Scales a frequency to the appropriate period for a haltech I/O Expander 12 Box A or B
+ * \param frequency_value : the Targeted Frequency
+ * \return Period in 10uS resolution for Haltech I/O Expander
+ */
+uint32_t frequency_Hz_to_period_10uS(uint32_t frequency_value) {
+    if (frequency_value == 0) {
+        return 0;
+    } else {
+        // output_value = (100000 / frequency_value)
+        return 100000U / frequency_value;
+    }
+}
+
+uint32_t period_10uS_to_frequency_Hz(uint32_t period_value) {
+    // If period_value == 0, return 0 to avoid division by zero
+    if (period_value == 0) {
+        return 0;
+    } else {
+        // Frequency = 100000 / period_value
+        return 100000U / period_value;
+    }
+}
+
+
 /**
  * \brief Gets a timestamp to 0.0001 seconds..
  */
