@@ -1549,6 +1549,11 @@ uint32_t frequency_Hz_to_period_10uS(uint32_t frequency_value) {
     }
 }
 
+/**
+ * \brief Scales a period to the appropriate frequency from a haltech I/O Expander 12 Box A or B
+ * \param period_value : the Period
+ * \return Frequency in Hz
+ */
 uint32_t period_10uS_to_frequency_Hz(uint32_t period_value) {
     // If period_value == 0, return 0 to avoid division by zero
     if (period_value == 0) {
