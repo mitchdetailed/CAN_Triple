@@ -14,7 +14,6 @@
 #ifndef INC_BACKEND_FUNCTIONS_H_
 #define INC_BACKEND_FUNCTIONS_H_
 
-
 extern uint32_t timestamp;
 /* Variable Declarations */
 
@@ -22,16 +21,19 @@ extern uint16_t can1Reset_counter;
 extern uint16_t can2Reset_counter;
 extern uint16_t can3Reset_counter;
 
-typedef enum {
-    CAN_1 = 1<< 0,
-    CAN_2 = 1<< 1,
-    CAN_3 = 1<< 2
+typedef enum
+{
+    CAN_1 = 1 << 0,
+    CAN_2 = 1 << 1,
+    CAN_3 = 1 << 2
 } CAN_Bus;
 
-typedef enum {
+typedef enum
+{
     LED_1
 } gpio_LED;
-typedef struct {
+typedef struct
+{
     uint8_t TxErrorCounter;
     uint8_t RxErrorCounter;
     uint8_t BusResetCounter;
@@ -46,7 +48,8 @@ typedef struct {
  * \param data[8] : the Data array
  * \return uint32_t Value
  */
-typedef struct {
+typedef struct
+{
     uint8_t Bus;             /**< ID of the CAN bus the message is associated with. */
     bool is_extended_id;     /**< True if using an extended ID, false if using a standard ID. */
     uint32_t arbitration_id; /**< The identifier for the message, either standard or extended based on is_extended_id. */
@@ -54,12 +57,14 @@ typedef struct {
     uint8_t data[8];         /**< Data payload of the CAN message. */
 } CAN_Message;
 
-typedef enum {
+typedef enum
+{
     NORMAL_MODE,
     LISTEN_ONLY
 } CAN_Mode;
 
-typedef struct {
+typedef struct
+{
     char array[UART_MSG_BUFFER_SIZE];
     uint16_t length;
 } StringArray;
@@ -68,13 +73,11 @@ extern StringArray array0;
 extern StringArray array1;
 extern uint8_t uart_array;
 
-
-
 /* Function Prototypes */
 
 // CAN Physical Layer Function Prototypes //
 uint8_t setupCANbus(CAN_Bus bus, uint32_t mainBitrate, CAN_Mode mode);
-//uint8_t setCANFDBitrate(CAN_Bus bus, uint32_t mainBitrate, uint32_t dataBitrate, bool bitrateSwitch);
+// uint8_t setCANFDBitrate(CAN_Bus bus, uint32_t mainBitrate, uint32_t dataBitrate, bool bitrateSwitch);
 uint8_t startCANbus(CAN_Bus bus);
 uint8_t stopCANbus(CAN_Bus bus);
 uint8_t resetCAN(CAN_Bus bus);
@@ -90,7 +93,7 @@ void trigger_CAN_TX(void);
 uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, uint8_t rxData[8]);
 
 // Arithmatic Functions related to CAN Reception and Transmission //
-float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset,  uint8_t decimal_places);
+float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset, uint8_t decimal_places);
 int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int32_t factor, int32_t offset);
 uint32_t process_unsigned_int_value(uint32_t value, uint32_t bitmask, uint32_t factor, uint32_t offset);
 uint32_t process_raw_value(uint32_t value, uint32_t bitmask);
@@ -122,20 +125,20 @@ uint8_t getRDP(void);
 uint8_t setRDP(bool on);
 
 // Reading from Flash Function Prototypes //
-uint8_t read_uint8_t_from_address(void* address);
-int8_t read_int8_t_from_address(void* address);
-uint16_t read_uint16_t_from_address(void* address);
-int16_t read_int16_t_from_address(void* address);
-uint32_t read_uint32_t_from_address(void* address);
-int32_t read_int32_t_from_address(void* address);
-float read_float_from_address(void* address);
-char* read_char_array_from_address(const void* source, size_t length);
+uint8_t read_uint8_t_from_address(void *address);
+int8_t read_int8_t_from_address(void *address);
+uint16_t read_uint16_t_from_address(void *address);
+int16_t read_int16_t_from_address(void *address);
+uint32_t read_uint32_t_from_address(void *address);
+int32_t read_int32_t_from_address(void *address);
+float read_float_from_address(void *address);
+char *read_char_array_from_address(const void *source, size_t length);
 
 // UART Debugger Function Prototypes //
-void serialPrint(const char* str);
+void serialPrint(const char *str);
 void tx_Serial_Comms();
 void onSerialReceive(uint8_t *serialMessage);
 
-char* format_CAN_message(const CAN_Message *msg, char *buffer, size_t buf_size);
+char *format_CAN_message(const CAN_Message *msg, char *buffer, size_t buf_size);
 
-#endif 
+#endif

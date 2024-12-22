@@ -1,6 +1,6 @@
-/* 
+/*
  * user_code.c - All User Code should be applied here unless specified otherwise.
- * 
+ *
  */
 
 /* File Includes */
@@ -13,14 +13,14 @@
 
 /* End File Includes */
 
-
 /* Variable Declarations */
 uint32_t serialnumber;
 CAN_ErrorCounts errors;
 uint8_t countervalue = 0;
 
 /* Startup Functions */
-void events_Startup(){
+void events_Startup()
+{
 	setupCANbus(CAN_1, 1000000, NORMAL_MODE);
 	setupCANbus(CAN_2, 1000000, NORMAL_MODE);
 	setupCANbus(CAN_3, 1000000, NORMAL_MODE);
@@ -33,85 +33,86 @@ void events_Startup(){
 }
 /* End Startup Functions */
 
+void onSerialReceive(uint8_t *serialMessage)
+{
+	// What do you want to do when you receive a UART message.. ?
+	// printf("%07.4f message received...\r\n",getTimestamp());
+}
 
-void onSerialReceive(uint8_t *serialMessage){
-    // What do you want to do when you receive a UART message.. ?
-	//printf("%07.4f message received...\r\n",getTimestamp());
-
-  }
-
-void onReceive(CAN_Message Message){
-	// What do you want to do when you receive a CAN message.. ?	
-	    char formatted_message[50];
-    format_CAN_message(&Message, formatted_message, sizeof(formatted_message));
+void onReceive(CAN_Message Message)
+{
+	// What do you want to do when you receive a CAN message.. ?
+	char formatted_message[50];
+	format_CAN_message(&Message, formatted_message, sizeof(formatted_message));
 	printf("%s\r\n", formatted_message);
-	if (Message.Bus == CAN_1){
-		send_message(CAN_2,Message.is_extended_id,Message.arbitration_id,Message.dlc,Message.data);
-		
+	if (Message.Bus == CAN_1)
+	{
+		send_message(CAN_2, Message.is_extended_id, Message.arbitration_id, Message.dlc, Message.data);
 	}
-	if (Message.Bus == CAN_2){
-		send_message(CAN_1,Message.is_extended_id,Message.arbitration_id,Message.dlc,Message.data);
+	if (Message.Bus == CAN_2)
+	{
+		send_message(CAN_1, Message.is_extended_id, Message.arbitration_id, Message.dlc, Message.data);
 	}
-	if (Message.Bus == CAN_3){
-
+	if (Message.Bus == CAN_3)
+	{
 	}
 }
 
 /* Run 2000Hz Functions here */
-void events_2000Hz(){
-	
+void events_2000Hz()
+{
 }
 
 /* Run 1000Hz Functions here */
-void events_1000Hz(){
-
+void events_1000Hz()
+{
 }
 
 /* Run 500Hz Functions here */
-void events_500Hz(){
-
+void events_500Hz()
+{
 }
 
 /* Run 200Hz Functions here */
-void events_200Hz(){
-
+void events_200Hz()
+{
 }
 
 /* Run 100Hz Functions here */
-void events_100Hz(){
-
+void events_100Hz()
+{
 }
 
 /* Run 50Hz Functions here */
-void events_50Hz(){
-
+void events_50Hz()
+{
 }
 
 /* Run 20Hz Functions here */
-void events_20Hz(){
-	
+void events_20Hz()
+{
 }
 
 /* Run 10Hz Functions here */
-void events_10Hz(){
-	uint8_t msgdata1[8] = {countervalue,countervalue+1%256,countervalue+2%256,countervalue+3%256,countervalue+4%256,countervalue+5%256,countervalue+6%256,countervalue+7%256};
-	send_message(CAN_1, false,0x123,8,msgdata1);
+void events_10Hz()
+{
+	uint8_t msgdata1[8] = {countervalue, countervalue + 1 % 256, countervalue + 2 % 256, countervalue + 3 % 256, countervalue + 4 % 256, countervalue + 5 % 256, countervalue + 6 % 256, countervalue + 7 % 256};
+	send_message(CAN_1, false, 0x123, 8, msgdata1);
 	countervalue++;
-
 }
 
 /* Run 5Hz Functions here */
-void events_5Hz(){
+void events_5Hz()
+{
 	toggleLED(LED_1);
-
 }
 
 /* Run 2Hz Functions here */
-void events_2Hz(){
-
+void events_2Hz()
+{
 }
 
 /* Run 1Hz Functions here */
-void events_1Hz(){
-	
+void events_1Hz()
+{
 }
