@@ -162,7 +162,7 @@ int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int3
 Lets assume the Engine Coolant Temp is an unsigned 10 bit Little Endian CAN Signal on Bus 1 and Message ID 0x124 and is the all 8 bits of the 3rd byte(index 2), and 2 bits of the 4th byte(index 3) of the Data field. It has a factor of 1 and an offset of -40. The code could be setup the following way. 
 
 ```C
-int32 engine_coolant_temp = 0;
+int32_t engine_coolant_temp = 0;
 onReceive(CAN_Message Message){
 	if (Message.Bus == CAN_1){
         if (Message.arbitration_id == 0x124){
@@ -181,7 +181,7 @@ uint32_t process_unsigned_int_value(uint32_t value, uint32_t bitmask, uint32_t f
 Lets assume the Engine Oil Pressure is an unsigned 10 bit Big Endian CAN Signal on Bus 1 and Message ID 0x125 and is the all 8 bits of the 6th byte(index 5), and 2 bits of the 5th byte(index 4) of the Data field. It has a factor of 1 and an offset of 0. The code could be setup the following way. 
 
 ```C
-int32 engine_oil_pressure = 0;
+int32_t engine_oil_pressure = 0;
 onReceive(CAN_Message Message){
 	if (Message.Bus == CAN_1){
         if (Message.arbitration_id == 0x125){
