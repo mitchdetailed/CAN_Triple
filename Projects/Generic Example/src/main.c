@@ -1,20 +1,20 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2024 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2024 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
@@ -71,9 +71,8 @@ uint8_t x2Hz_trigger = 0;
 uint8_t x1Hz_trigger = 0;
 uint32_t timestamp = 0;
 
-
 uint8_t rxBuffer[256];
-uint8_t processData = 0;  // Flag to indicate data processing
+uint8_t processData = 0; // Flag to indicate data processing
 uint8_t dataBuffer[256];
 volatile uint16_t dataSize = 0;
 volatile uint8_t dataReady = 0;
@@ -99,9 +98,9 @@ static void MX_TIM8_Init(void);
 /* USER CODE END 0 */
 
 /**
-  * @brief  The application entry point.
-  * @retval int
-  */
+ * @brief  The application entry point.
+ * @retval int
+ */
 int main(void)
 {
 
@@ -147,83 +146,96 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  trigger_CAN_RX();
-	  trigger_CAN_TX();
+    trigger_CAN_RX();
+    trigger_CAN_TX();
     if (dataReady)
     {
-      if (uart_abort == false){
-          // Process the received data
+      if (uart_abort == false)
+      {
+        // Process the received data
         onSerialReceive(dataBuffer);
-          // Clear the flag
-      }  
+        // Clear the flag
+      }
       dataReady = 0;
     }
-	  	  if(x2000Hz_trigger == 1){
-	  		  x2000Hz_trigger = 0;
-	  		  events_2000Hz();
-	  	  }
+    if (x2000Hz_trigger == 1)
+    {
+      x2000Hz_trigger = 0;
+      events_2000Hz();
+    }
 
-	  	  if(x1000Hz_trigger == 1){
-	  		  x1000Hz_trigger = 0;
-	  		  events_1000Hz();
-	  	  }
+    if (x1000Hz_trigger == 1)
+    {
+      x1000Hz_trigger = 0;
+      events_1000Hz();
+    }
 
-	  	  if(x500Hz_trigger == 1){
-	  		  x500Hz_trigger = 0;
-	  		  events_500Hz();
-	  	  }
+    if (x500Hz_trigger == 1)
+    {
+      x500Hz_trigger = 0;
+      events_500Hz();
+    }
 
-	  	  if(x200Hz_trigger == 1){
-	  		  x200Hz_trigger = 0;
-	  		  events_200Hz();
-	  	  }
+    if (x200Hz_trigger == 1)
+    {
+      x200Hz_trigger = 0;
+      events_200Hz();
+    }
 
-	  	  if(x100Hz_trigger == 1){
-	  		  x100Hz_trigger = 0;
-	  		  events_100Hz();
-	  	  }
+    if (x100Hz_trigger == 1)
+    {
+      x100Hz_trigger = 0;
+      events_100Hz();
+    }
 
-	  	  if(x50Hz_trigger == 1){
-	  		  x50Hz_trigger = 0;
-	  		  events_50Hz();
-	  	  }
+    if (x50Hz_trigger == 1)
+    {
+      x50Hz_trigger = 0;
+      events_50Hz();
+    }
 
-	  	  if(x20Hz_trigger == 1){
-	  		  x20Hz_trigger = 0;
-	  		  events_20Hz();
-	  	  }
+    if (x20Hz_trigger == 1)
+    {
+      x20Hz_trigger = 0;
+      events_20Hz();
+    }
 
-	  	  if(x10Hz_trigger == 1){
-	  		  x10Hz_trigger = 0;
-	  		  events_10Hz();
-	  	  }
+    if (x10Hz_trigger == 1)
+    {
+      x10Hz_trigger = 0;
+      events_10Hz();
+    }
 
-	  	  if(x5Hz_trigger == 1){
-	  		  x5Hz_trigger = 0;
-	  		  events_5Hz();
-	  	  }
+    if (x5Hz_trigger == 1)
+    {
+      x5Hz_trigger = 0;
+      events_5Hz();
+    }
 
-	  	  if(x2Hz_trigger == 1){
-	  		  x2Hz_trigger = 0;
-	  		  events_2Hz();
-	  	  }
+    if (x2Hz_trigger == 1)
+    {
+      x2Hz_trigger = 0;
+      events_2Hz();
+    }
 
-	  	  if(x1Hz_trigger == 1){
-	  		  x1Hz_trigger = 0;
-	  		  events_1Hz();
-          if(uart_abort == true){
-            
-            HAL_UART_Init(&huart1);
+    if (x1Hz_trigger == 1)
+    {
+      x1Hz_trigger = 0;
+      events_1Hz();
+      if (uart_abort == true)
+      {
 
-            // Restart UART receive interrupt if needed
-            __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
-            HAL_UARTEx_ReceiveToIdle_DMA(&huart1, rxBuffer, sizeof(rxBuffer));
+        HAL_UART_Init(&huart1);
 
-          }
-	  	  }
-        if(uart_abort == false){
-	        tx_Serial_Comms();
-        }
+        // Restart UART receive interrupt if needed
+        __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
+        HAL_UARTEx_ReceiveToIdle_DMA(&huart1, rxBuffer, sizeof(rxBuffer));
+      }
+    }
+    if (uart_abort == false)
+    {
+      tx_Serial_Comms();
+    }
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -232,21 +244,21 @@ int main(void)
 }
 
 /**
-  * @brief System Clock Configuration
-  * @retval None
-  */
+ * @brief System Clock Configuration
+ * @retval None
+ */
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};
   RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
 
   /** Configure the main internal regulator output voltage
-  */
+   */
   HAL_PWREx_ControlVoltageScaling(PWR_REGULATOR_VOLTAGE_SCALE1_BOOST);
 
   /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
+   * in the RCC_OscInitTypeDef structure.
+   */
   RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
@@ -262,9 +274,8 @@ void SystemClock_Config(void)
   }
 
   /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+   */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2;
   RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
   RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
   RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV1;
@@ -277,10 +288,10 @@ void SystemClock_Config(void)
 }
 
 /**
-  * @brief FDCAN1 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief FDCAN1 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_FDCAN1_Init(void)
 {
 
@@ -316,14 +327,13 @@ static void MX_FDCAN1_Init(void)
   /* USER CODE BEGIN FDCAN1_Init 2 */
 
   /* USER CODE END FDCAN1_Init 2 */
-
 }
 
 /**
-  * @brief FDCAN2 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief FDCAN2 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_FDCAN2_Init(void)
 {
 
@@ -359,14 +369,13 @@ static void MX_FDCAN2_Init(void)
   /* USER CODE BEGIN FDCAN2_Init 2 */
 
   /* USER CODE END FDCAN2_Init 2 */
-
 }
 
 /**
-  * @brief FDCAN3 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief FDCAN3 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_FDCAN3_Init(void)
 {
 
@@ -402,14 +411,13 @@ static void MX_FDCAN3_Init(void)
   /* USER CODE BEGIN FDCAN3_Init 2 */
 
   /* USER CODE END FDCAN3_Init 2 */
-
 }
 
 /**
-  * @brief TIM2 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief TIM2 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_TIM2_Init(void)
 {
 
@@ -447,17 +455,16 @@ static void MX_TIM2_Init(void)
   /* USER CODE BEGIN TIM2_Init 2 */
   if (HAL_TIM_Base_Start_IT(&htim2) != HAL_OK)
   {
-	Error_Handler();
+    Error_Handler();
   }
   /* USER CODE END TIM2_Init 2 */
-
 }
 
 /**
-  * @brief TIM8 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief TIM8 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_TIM8_Init(void)
 {
 
@@ -497,17 +504,16 @@ static void MX_TIM8_Init(void)
   /* USER CODE BEGIN TIM8_Init 2 */
   if (HAL_TIM_Base_Start_IT(&htim8) != HAL_OK)
   {
-	Error_Handler();
+    Error_Handler();
   }
   /* USER CODE END TIM8_Init 2 */
-
 }
 
 /**
-  * @brief USART1 Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief USART1 Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_USART1_UART_Init(void)
 {
 
@@ -549,14 +555,12 @@ static void MX_USART1_UART_Init(void)
   __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
   HAL_UARTEx_ReceiveToIdle_DMA(&huart1, rxBuffer, sizeof(rxBuffer));
 
-
   /* USER CODE END USART1_Init 2 */
-
 }
 
 /**
-  * Enable DMA controller clock
-  */
+ * Enable DMA controller clock
+ */
 static void MX_DMA_Init(void)
 {
 
@@ -571,19 +575,18 @@ static void MX_DMA_Init(void)
   /* DMA1_Channel6_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, 1, 0);
   HAL_NVIC_EnableIRQ(DMA1_Channel6_IRQn);
-
 }
 
 /**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
+ * @brief GPIO Initialization Function
+ * @param None
+ * @retval None
+ */
 static void MX_GPIO_Init(void)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
-/* USER CODE BEGIN MX_GPIO_Init_1 */
-/* USER CODE END MX_GPIO_Init_1 */
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+  /* USER CODE END MX_GPIO_Init_1 */
 
   /* GPIO Ports Clock Enable */
   __HAL_RCC_GPIOF_CLK_ENABLE();
@@ -591,13 +594,13 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOA_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_4, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_4, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_10, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : PB10 PB11 PB4 */
-  GPIO_InitStruct.Pin = GPIO_PIN_10|GPIO_PIN_11|GPIO_PIN_4;
+  GPIO_InitStruct.Pin = GPIO_PIN_10 | GPIO_PIN_11 | GPIO_PIN_4;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
@@ -610,157 +613,174 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-/* USER CODE BEGIN MX_GPIO_Init_2 */
-/* USER CODE END MX_GPIO_Init_2 */
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+  /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-        if (htim->Instance == TIM2){
-        timestamp++;
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  if (htim->Instance == TIM2)
+  {
+    timestamp++;
+  }
+
+  else if (htim == &htim8)
+  {
+    timercounter_d2000 += 1;
+    x2000Hz_trigger = 1;
+
+    if (timercounter_d2000 % 2 == 0)
+    { // 1000 Hz
+      x1000Hz_trigger = 1;
     }
 
-    else if (htim == &htim8) {
-        timercounter_d2000 += 1;
-        x2000Hz_trigger = 1;
-
-        if (timercounter_d2000 % 2 == 0) { // 1000 Hz
-            x1000Hz_trigger = 1;
-        }
-
-        if (timercounter_d2000 % 4 == 0) { // 500 Hz
-            x500Hz_trigger = 1;
-        }
-
-        if (timercounter_d2000 % 10 == 0) { // 200 Hz
-            x200Hz_trigger = 1;
-        }
-
-        if (timercounter_d2000 % 20 == 0) { // 100 Hz
-            x100Hz_trigger = 1;
-        }
-
-        if (timercounter_d2000 % 40 == 0) { // 50 Hz
-            x50Hz_trigger = 1;
-        }
-
-        if (timercounter_d2000 % 100 == 0) { // 20 Hz
-            x20Hz_trigger = 1;
-        }
-
-        if (timercounter_d2000 % 200 == 0) { // 10 Hz
-            x10Hz_trigger = 1;
-        }
-
-        if (timercounter_d2000 % 400 == 0) { // 5 Hz
-            x5Hz_trigger = 1;
-        }
-
-        if (timercounter_d2000 % 1000 == 0) { // 2 Hz
-            x2Hz_trigger = 1;
-        }
-
-        if (timercounter_d2000 % 2000 == 0) { // 1 Hz
-            timercounter_d2000 = 0;
-            x1Hz_trigger = 1;
-        }
+    if (timercounter_d2000 % 4 == 0)
+    { // 500 Hz
+      x500Hz_trigger = 1;
     }
+
+    if (timercounter_d2000 % 10 == 0)
+    { // 200 Hz
+      x200Hz_trigger = 1;
+    }
+
+    if (timercounter_d2000 % 20 == 0)
+    { // 100 Hz
+      x100Hz_trigger = 1;
+    }
+
+    if (timercounter_d2000 % 40 == 0)
+    { // 50 Hz
+      x50Hz_trigger = 1;
+    }
+
+    if (timercounter_d2000 % 100 == 0)
+    { // 20 Hz
+      x20Hz_trigger = 1;
+    }
+
+    if (timercounter_d2000 % 200 == 0)
+    { // 10 Hz
+      x10Hz_trigger = 1;
+    }
+
+    if (timercounter_d2000 % 400 == 0)
+    { // 5 Hz
+      x5Hz_trigger = 1;
+    }
+
+    if (timercounter_d2000 % 1000 == 0)
+    { // 2 Hz
+      x2Hz_trigger = 1;
+    }
+
+    if (timercounter_d2000 % 2000 == 0)
+    { // 1 Hz
+      timercounter_d2000 = 0;
+      x1Hz_trigger = 1;
+    }
+  }
 }
 
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
-    if (huart->Instance == USART1)
+  if (huart->Instance == USART1)
+  {
+    // Ensure Size does not exceed the buffer
+    if (Size <= 256)
     {
-        // Ensure Size does not exceed the buffer
-        if (Size <= 256)
-        {
-            // Copy data from rxBuffer to dataBuffer
-            memcpy(dataBuffer, rxBuffer, Size);
+      // Copy data from rxBuffer to dataBuffer
+      memcpy(dataBuffer, rxBuffer, Size);
 
-            // Append null terminator to dataBuffer
-            dataBuffer[Size] = '\0';
+      // Append null terminator to dataBuffer
+      dataBuffer[Size] = '\0';
 
-            // Set the dataReady flag
-            dataReady = 1;
+      // Set the dataReady flag
+      dataReady = 1;
 
+      // Clear the rxBuffer after processing the data
+      memset(rxBuffer, 0, 256);
 
-            // Clear the rxBuffer after processing the data
-            memset(rxBuffer, 0, 256);
-
-            // Restart DMA reception
-            __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
-            if (HAL_UARTEx_ReceiveToIdle_DMA(&huart1, rxBuffer, sizeof(rxBuffer)) != HAL_OK)
-            {
-                // Handle error
-                
-            }
-        }
+      // Restart DMA reception
+      __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
+      if (HAL_UARTEx_ReceiveToIdle_DMA(&huart1, rxBuffer, sizeof(rxBuffer)) != HAL_OK)
+      {
+        // Handle error
+      }
     }
+  }
 }
 
-void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart) {
-    if (huart->Instance == USART1) {
-        // Check the error code and handle specific errors
-        if (huart->ErrorCode & HAL_UART_ERROR_ORE) {
-            // Overrun error handling
-            __HAL_UART_CLEAR_OREFLAG(huart);
-        }
-        if (huart->ErrorCode & HAL_UART_ERROR_NE) {
-            // Noise error handling
-            __HAL_UART_CLEAR_NEFLAG(huart);
-        }
-        if (huart->ErrorCode & HAL_UART_ERROR_FE) {
-            // Framing error handling
-            __HAL_UART_CLEAR_FEFLAG(huart);
-        }
-        if (huart->ErrorCode & HAL_UART_ERROR_PE) {
-            // Parity error handling
-            __HAL_UART_CLEAR_PEFLAG(huart);
-        }
-
-        // Optionally, reset the UART state and reinitialize
-        HAL_DMA_Abort(&hdma_usart1_rx);
-        HAL_UART_Abort(huart);
-        
-
-        /////////////////////// exception
-        if(uart_abort == false){
-          HAL_UART_Init(huart);
-
-          // Restart UART receive interrupt if needed
-          __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
-          HAL_UARTEx_ReceiveToIdle_DMA(huart, rxBuffer, sizeof(rxBuffer));
-        }
-        uart_abort = true;
+void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
+{
+  if (huart->Instance == USART1)
+  {
+    // Check the error code and handle specific errors
+    if (huart->ErrorCode & HAL_UART_ERROR_ORE)
+    {
+      // Overrun error handling
+      __HAL_UART_CLEAR_OREFLAG(huart);
     }
+    if (huart->ErrorCode & HAL_UART_ERROR_NE)
+    {
+      // Noise error handling
+      __HAL_UART_CLEAR_NEFLAG(huart);
+    }
+    if (huart->ErrorCode & HAL_UART_ERROR_FE)
+    {
+      // Framing error handling
+      __HAL_UART_CLEAR_FEFLAG(huart);
+    }
+    if (huart->ErrorCode & HAL_UART_ERROR_PE)
+    {
+      // Parity error handling
+      __HAL_UART_CLEAR_PEFLAG(huart);
+    }
+
+    // Optionally, reset the UART state and reinitialize
+    HAL_DMA_Abort(&hdma_usart1_rx);
+    HAL_UART_Abort(huart);
+
+    /////////////////////// exception
+    if (uart_abort == false)
+    {
+      HAL_UART_Init(huart);
+
+      // Restart UART receive interrupt if needed
+      __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
+      HAL_UARTEx_ReceiveToIdle_DMA(huart, rxBuffer, sizeof(rxBuffer));
+    }
+    uart_abort = true;
+  }
 }
 /* USER CODE END 4 */
 
 /**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
+ * @brief  This function is executed in case of error occurrence.
+ * @retval None
+ */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
-      // Reset the system
-    //NVIC_SystemReset();
+  // Reset the system
+  // NVIC_SystemReset();
   while (1)
   {
   }
   /* USER CODE END Error_Handler_Debug */
 }
 
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
+ * @brief  Reports the name of the source file and the source line number
+ *         where the assert_param error has occurred.
+ * @param  file: pointer to the source file name
+ * @param  line: assert_param error line source number
+ * @retval None
+ */
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
