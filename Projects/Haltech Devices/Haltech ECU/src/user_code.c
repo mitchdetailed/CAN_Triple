@@ -1,9 +1,9 @@
 /*
  *  	user_code.c - All User Code should be applied here unless specified otherwise.
- *  	Example Setup of Haltech I/O expander 12 Box B for configuration
+ *  	Example Setup of Haltech ECU for Configuring
  * 		Notes :
- * 			*** DPO Ouput only responds to Duty cycle from Haltech ECU,
- * 			*** USE DUTY for DPO's WHEN CONFIGURING HALTECH ECU!!!!***
+ *
+ *
  */
 
 /* File Includes */
