@@ -204,7 +204,7 @@ void events_50Hz()
 		uint16_t ioBA_AVI2 = (uint16_t)roundfloat_to_int32(haltech_IO_Box_A_AVI2 * 5 / 4095, 0);
 		uint16_t ioBA_AVI3 = (uint16_t)roundfloat_to_int32(haltech_IO_Box_A_AVI1 * 5 / 4095, 0);
 		uint16_t ioBA_AVI4 = (uint16_t)roundfloat_to_int32(haltech_IO_Box_A_AVI1 * 5 / 4095, 0);
-		uint8_t msgIOBA_1[8] = {(uint8_t)ioBA_AVI1 >> 8, (uint8_t)ioBA_AVI1, (uint8_t)ioBA_AVI2 >> 8, (uint8_t)ioBA_AVI2, (uint8_t)ioBA_AVI3 >> 8, (uint8_t)ioBA_AVI3, (uint8_t)ioBA_AVI4 >> 8, (uint8_t)ioBA_AVI4};
+		uint8_t msgIOBA_1[8] = {(uint8_t)(ioBA_AVI1 >> 8), (uint8_t)ioBA_AVI1, (uint8_t)(ioBA_AVI2 >> 8), (uint8_t)ioBA_AVI2, (uint8_t)(ioBA_AVI3 >> 8), (uint8_t)ioBA_AVI3, (uint8_t)(ioBA_AVI4 >> 8), (uint8_t)ioBA_AVI4};
 		send_message(HALTECH_CAN, false, 0x2C0, 8, msgIOBA_1);
 
 		uint16_t ioBA_DPI1_DC = (uint16_t)(haltech_IO_Box_A_DPI1_Duty * 10);
