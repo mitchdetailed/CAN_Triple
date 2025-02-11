@@ -24,15 +24,8 @@
 /* File Define options */
 
 #define HALTECH_CAN CAN_1
-#define ENABLE_TMS4
-
-#ifdef ENABLE_TMS4 
-	#define FL 0
-	#define FR 1
-	#define RL 2
-	#define RR 3
-#endif
-
+#define HALTECH_TMS4
+#define HALTECH_TMS4_DEMO
 /* End File Defines */
 
 //-----------------------------//
@@ -40,14 +33,16 @@
 //-----------------------------//
 /* Variable Prototypes */
 typedef struct {
-    uint16_t 	Tire_Pressure_kPa[4];  // 0-800 kPa, 1 kPa resolution
-    int8_t   	Tire_Temperature_C[4]; // -40 to 124 °C, 1°C resolution
-    float    	TPMS_Voltage[4];       // 0-4V, 0.1V resolution
-    uint8_t  	Tire_Temperature_Absolute[4]; // Absolute temperature
-	bool 		Tire_Leaking[4];		// Tire Leaking Status
-	bool 		Tire_Temperature_Negative[4]; // Negative Temperature Status
-	uint8_t 	CanMsg[8]; // CAN Message
+    enum { FL = 0, FR = 1, RL = 2, RR = 3 } Tms4Position_t;
+    uint16_t Tire_Pressure_kPa[4];
+    int8_t   Tire_Temperature_C[4];
+    float    TPMS_Voltage[4];
+    uint8_t  Tire_Temperature_Absolute[4];
+    bool     Tire_Leaking[4];
+    bool     Tire_Temperature_Negative[4];
+    uint8_t  CanMsg[8];
 } Tms4Data_t;
+
 
 /* End Variable Prototypes */
 
@@ -57,7 +52,7 @@ uint32_t serialnumber;
 CAN_ErrorCounts errors;
 
 /*  Haltech TMS-4  */
-#ifdef ENABLE_TMS4
+#ifdef HALTECH_TMS4
 Tms4Data_t haltech_tms4 = {
     .Tire_Pressure_kPa = {227, 227, 227, 227},
     .Tire_Temperature_C = {40, 40, 40, 40},
@@ -147,7 +142,7 @@ void events_100Hz()
 void events_50Hz()
 {
 
-#ifdef ENABLE_TMS4
+	#ifdef HALTECH_TMS4
 	for (int i = 0; i < 4; i++) {
 		haltech_tms4.Tire_Temperature_Negative[i] = (haltech_tms4.Tire_Temperature_C[i] < 0);
 		haltech_tms4.Tire_Temperature_Absolute[i] = abs(haltech_tms4.Tire_Temperature_C[i]);
@@ -178,7 +173,8 @@ void events_10Hz()
 void events_5Hz()
 {
 	toggleLED(LED_1);
-	#ifdef ENABLE_TMS4
+	
+	#if defined(HALTECH_TMS4) && defined(HALTECH_TMS4_DEMO)
 	for (int i = 0; i < 4; i++) {
 		// Increment tire pressure and wrap around at 800 kPa
 		haltech_tms4.Tire_Pressure_kPa[i] = (haltech_tms4.Tire_Pressure_kPa[i] + 1) % 800;
