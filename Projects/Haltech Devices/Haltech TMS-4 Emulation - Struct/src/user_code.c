@@ -26,21 +26,49 @@
 #define HALTECH_CAN CAN_1
 #define HALTECH_TMS4
 #define HALTECH_TMS4_DEMO
+
 /* End File Defines */
 
 //-----------------------------//
 //-----------------------------//
 //-----------------------------//
 /* Variable Prototypes */
+/**
+ * @brief Data structure for Haltech TMS-4 Tire Monitoring System.
+ * 
+ * This structure holds tire pressure, temperature, voltage, 
+ * and status information for each tire, supporting real-time monitoring
+ * and CAN message formatting.
+ */
 typedef struct {
+    /**
+     * @brief Enum representing tire positions.
+     * 
+     * FL: Front Left, FR: Front Right, RL: Rear Left, RR: Rear Right.
+     */
     enum { FL = 0, FR = 1, RL = 2, RR = 3 } Tms4Position_t;
+
+    /** @brief Tire pressure values (in kPa). Range: 0-800 kPa, 1 kPa resolution. */
     uint16_t Tire_Pressure_kPa[4];
+
+    /** @brief Tire temperature values (in Celsius). Range: -40 to 124°C, 1°C resolution. */
     int8_t   Tire_Temperature_C[4];
+
+    /** @brief TPMS voltage readings (in volts). Range: 0-4V, 0.1V resolution. */
     float    TPMS_Voltage[4];
+
+    /** @brief Absolute tire temperature values. */
     uint8_t  Tire_Temperature_Absolute[4];
+
+    /** @brief Tire leaking status. True = leaking, False = normal. */
     bool     Tire_Leaking[4];
+
+    /** @brief Indicates if the temperature value is negative. */
     bool     Tire_Temperature_Negative[4];
+
+    /** @brief Raw CAN message data buffer (8 bytes). */
     uint8_t  CanMsg[8];
+
 } Tms4Data_t;
 
 
@@ -53,15 +81,33 @@ CAN_ErrorCounts errors;
 
 /*  Haltech TMS-4  */
 #ifdef HALTECH_TMS4
+/**
+ * @brief Haltech TMS-4 sensor data instance.
+ * 
+ * This instance of Tms4Data_t represents the real-time sensor values
+ * for tire pressure, temperature, and status flags. It is initialized
+ * with default values for testing and operation.
+ */
 Tms4Data_t haltech_tms4 = {
+    /** @brief Initial tire pressure values (kPa). */
     .Tire_Pressure_kPa = {227, 227, 227, 227},
+
+    /** @brief Initial tire temperature values (°C). */
     .Tire_Temperature_C = {40, 40, 40, 40},
+
+    /** @brief Initial TPMS voltage values (V). */
     .TPMS_Voltage = {3.3, 3.3, 3.3, 3.3},
+
+    /** @brief Initial absolute tire temperature values. */
     .Tire_Temperature_Absolute = {40, 40, 40, 40},
-	.Tire_Leaking = {false, false, false, false},
-	.Tire_Temperature_Negative = {false, false, false, false}
-	
+
+    /** @brief Initial tire leak status. False = no leak. */
+    .Tire_Leaking = {false, false, false, false},
+
+    /** @brief Initial negative temperature status. False = positive temperatures. */
+    .Tire_Temperature_Negative = {false, false, false, false}
 };
+
 #endif
 
 /*  End Haltech TMS-4 */
@@ -174,7 +220,10 @@ void events_5Hz()
 {
 	toggleLED(LED_1);
 	
+	
+	/** Demo functions for testing operation with Haltech ECU */
 	#if defined(HALTECH_TMS4) && defined(HALTECH_TMS4_DEMO)
+	
 	for (int i = 0; i < 4; i++) {
 		// Increment tire pressure and wrap around at 800 kPa
 		haltech_tms4.Tire_Pressure_kPa[i] = (haltech_tms4.Tire_Pressure_kPa[i] + 1) % 800;
@@ -192,6 +241,7 @@ void events_5Hz()
 		}
 	}
 	#endif
+	/** End of Demo functions for testing operation with Haltech ECU */
 }
 
 /* Run 2Hz Functions here */
