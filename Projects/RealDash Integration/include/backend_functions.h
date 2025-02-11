@@ -93,7 +93,7 @@ void trigger_CAN_TX(void);
 uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, uint8_t rxData[8]);
 
 // Arithmatic Functions related to CAN Reception and Transmission //
-float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset, uint8_t decimal_places);
+float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset, int8_t decimal_places);
 int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int32_t factor, int32_t offset);
 uint32_t process_unsigned_int_value(uint32_t value, uint32_t bitmask, uint32_t factor, uint32_t offset);
 uint32_t process_raw_value(uint32_t value, uint32_t bitmask);
@@ -133,6 +133,7 @@ uint32_t read_uint32_t_from_address(void *address);
 int32_t read_int32_t_from_address(void *address);
 float read_float_from_address(void *address);
 char *read_char_array_from_address(const void *source, size_t length);
+void writeFlash(uint32_t page, uint8_t *Data, uint16_t dataSize);
 
 // UART Debugger Function Prototypes //
 void serialPrint(const char *str);

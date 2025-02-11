@@ -1622,7 +1622,7 @@ float process_ieee754(uint32_t value, uint32_t bitmask, float factor, float offs
  * \param decimal_places : the amount of digits to round to
  * \return Float Value.
  */
-float process_float(uint32_t data, uint32_t Bitmask, bool is_signed, float factor, float offset, int8_t decimal_places)
+process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset, int8_t decimal_places)
 {
     // Step 1: Count trailing zeros of the Bitmask
     int trailing_zeros = count_trailing_zeros(Bitmask);
