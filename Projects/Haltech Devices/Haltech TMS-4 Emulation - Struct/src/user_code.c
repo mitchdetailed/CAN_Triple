@@ -44,9 +44,9 @@ typedef struct {
     int8_t   	Tire_Temperature_C[4]; // -40 to 124 °C, 1°C resolution
     float    	TPMS_Voltage[4];       // 0-4V, 0.1V resolution
     uint8_t  	Tire_Temperature_Absolute[4]; // Absolute temperature
-	bool 		Tire_Leaking[4];		// Tire Leaking Status
-	bool 		Tire_Temperature_Negative[4]; // Negative Temperature Status
-	uint8_t 	CanMsg[8]; // CAN Message
+    bool 	Tire_Leaking[4];		// Tire Leaking Status
+    bool 	Tire_Temperature_Negative[4]; // Negative Temperature Status
+    uint8_t 	CanMsg[8]; // CAN Message
 } Tms4Data_t;
 
 /* End Variable Prototypes */
