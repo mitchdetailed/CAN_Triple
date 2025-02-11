@@ -1347,7 +1347,7 @@ float process_ieee754(uint32_t value, uint32_t bitmask, float factor, float offs
  * \param decimal_places : the amount of digits to the right to round to
  * \return Float Value.
  */
-float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset, uint8_t decimal_places){
+float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset, int8_t decimal_places){
     uint32_t result = value & bitmask;
     uint32_t most_significant_bit = bitmask & (~bitmask + 1);
 
