@@ -189,7 +189,7 @@ void events_50Hz()
 {
 
 	#ifdef HALTECH_TMS4
-	for (int i = 0; i < 4; i++) {
+	for (uint8_t i = 0; i < 4; i++) {
 		haltech_tms4.Tire_Temperature_Negative[i] = (haltech_tms4.Tire_Temperature_C[i] < 0);
 		haltech_tms4.Tire_Temperature_Absolute[i] = abs(haltech_tms4.Tire_Temperature_C[i]);
 		haltech_tms4.CanMsg[0] = i+1;
