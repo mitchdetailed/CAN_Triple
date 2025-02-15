@@ -56,18 +56,18 @@ typedef struct
 	uint16_t outAVI[4];
 	uint16_t outDPI_DC[4];
 	uint16_t outDPI_Period[4];
-} HaltechIO12Expander;
+} HaltechIO12Expander_t;
 
 // Haltech Ecosystem Structure prototype
 
 typedef struct
 {
 #ifdef ENABLE_HALTECH_IO_BOX_A
-	HaltechIO12Expander IO12ExpanderA;
+	HaltechIO12Expander_t IO12ExpanderA;
 #endif
 
 #ifdef ENABLE_HALTECH_IO_BOX_B
-	HaltechIO12Expander IO12ExpanderB;
+	HaltechIO12Expander_t IO12ExpanderB;
 #endif
 } HaltechEcosystem;
 

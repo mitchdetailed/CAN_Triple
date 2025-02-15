@@ -24,8 +24,8 @@
 /* File Define options */
 
 #define HALTECH_CAN CAN_1
-#define HALTECH_TMS4
-#define HALTECH_TMS4_DEMO
+#define ENABLE_TMS4
+#define ENABLE_TMS4_DEMO
 
 /* End File Defines */
 
@@ -71,6 +71,14 @@ typedef struct {
 
 } Tms4Data_t;
 
+typedef struct
+{
+
+#ifdef ENABLE_TMS4
+Tms4Data_t TMS4;
+#endif
+
+} HaltechEcosystem;
 
 /* End Variable Prototypes */
 
@@ -79,8 +87,10 @@ typedef struct {
 uint32_t serialnumber;
 CAN_ErrorCounts errors;
 
+HaltechEcosystem Haltech =
+{
 /*  Haltech TMS-4  */
-#ifdef HALTECH_TMS4
+#ifdef ENABLE_TMS4
 /**
  * @brief Haltech TMS-4 sensor data instance.
  * 
@@ -88,7 +98,8 @@ CAN_ErrorCounts errors;
  * for tire pressure, temperature, and status flags. It is initialized
  * with default values for testing and operation.
  */
-Tms4Data_t haltech_tms4 = {
+	.TMS4 = 
+	{
     /** @brief Initial tire pressure values (kPa). */
     .Tire_Pressure_kPa = {227, 227, 227, 227},
 
@@ -106,9 +117,11 @@ Tms4Data_t haltech_tms4 = {
 
     /** @brief Initial negative temperature status. False = positive temperatures. */
     .Tire_Temperature_Negative = {false, false, false, false}
-};
+}
 
 #endif
+
+};
 
 /*  End Haltech TMS-4 */
 
@@ -188,19 +201,19 @@ void events_100Hz()
 void events_50Hz()
 {
 
-	#ifdef HALTECH_TMS4
+	#ifdef ENABLE_TMS4
 	for (uint8_t i = 0; i < 4; i++) {
-		haltech_tms4.Tire_Temperature_Negative[i] = (haltech_tms4.Tire_Temperature_C[i] < 0);
-		haltech_tms4.Tire_Temperature_Absolute[i] = abs(haltech_tms4.Tire_Temperature_C[i]);
-		haltech_tms4.CanMsg[0] = i+1;
-		haltech_tms4.CanMsg[1] = (uint8_t)(haltech_tms4.Tire_Pressure_kPa[i] >> 8);
-		haltech_tms4.CanMsg[2] = (uint8_t)(haltech_tms4.Tire_Pressure_kPa[i]);
-		haltech_tms4.CanMsg[3] = haltech_tms4.Tire_Temperature_Absolute[i];
-		haltech_tms4.CanMsg[4] = (uint8_t)(haltech_tms4.TPMS_Voltage[i] * 10);
-		haltech_tms4.CanMsg[5] = (uint8_t)((haltech_tms4.Tire_Temperature_Negative[i] << 4) + haltech_tms4.Tire_Leaking[i]);
-		haltech_tms4.CanMsg[6] = 0;
-		haltech_tms4.CanMsg[7] = 0;
-		send_message(HALTECH_CAN, 0, 0x77E, 8, haltech_tms4.CanMsg);
+		Haltech.TMS4.Tire_Temperature_Negative[i] = (Haltech.TMS4.Tire_Temperature_C[i] < 0);
+		Haltech.TMS4.Tire_Temperature_Absolute[i] = abs(Haltech.TMS4.Tire_Temperature_C[i]);
+		Haltech.TMS4.CanMsg[0] = i+1;
+		Haltech.TMS4.CanMsg[1] = (uint8_t)(Haltech.TMS4.Tire_Pressure_kPa[i] >> 8);
+		Haltech.TMS4.CanMsg[2] = (uint8_t)(Haltech.TMS4.Tire_Pressure_kPa[i]);
+		Haltech.TMS4.CanMsg[3] = Haltech.TMS4.Tire_Temperature_Absolute[i];
+		Haltech.TMS4.CanMsg[4] = (uint8_t)(Haltech.TMS4.TPMS_Voltage[i] * 10);
+		Haltech.TMS4.CanMsg[5] = (uint8_t)((Haltech.TMS4.Tire_Temperature_Negative[i] << 4) + Haltech.TMS4.Tire_Leaking[i]);
+		Haltech.TMS4.CanMsg[6] = 0;
+		Haltech.TMS4.CanMsg[7] = 0;
+		send_message(HALTECH_CAN, 0, 0x77E, 8, Haltech.TMS4.CanMsg);
 	}
 #endif
 }
@@ -222,22 +235,22 @@ void events_5Hz()
 	
 	
 	/** Demo functions for testing operation with Haltech ECU */
-	#if defined(HALTECH_TMS4) && defined(HALTECH_TMS4_DEMO)
+	#if defined(ENABLE_TMS4) && defined(ENABLE_TMS4_DEMO)
 	
 	for (int i = 0; i < 4; i++) {
 		// Increment tire pressure and wrap around at 800 kPa
-		haltech_tms4.Tire_Pressure_kPa[i] = (haltech_tms4.Tire_Pressure_kPa[i] + 1) % 800;
+		Haltech.TMS4.Tire_Pressure_kPa[i] = (Haltech.TMS4.Tire_Pressure_kPa[i] + 1) % 800;
 	
 		// Increment temperature, reset if exceeding 125°C
-		haltech_tms4.Tire_Temperature_C[i]++;
-		if (haltech_tms4.Tire_Temperature_C[i] >= 125) {
-			haltech_tms4.Tire_Temperature_C[i] = -40;
+		Haltech.TMS4.Tire_Temperature_C[i]++;
+		if (Haltech.TMS4.Tire_Temperature_C[i] >= 125) {
+			Haltech.TMS4.Tire_Temperature_C[i] = -40;
 		}
 	
 		// Increment TPMS voltage, reset if exceeding 4V
-		haltech_tms4.TPMS_Voltage[i] += 0.1f;
-		if (haltech_tms4.TPMS_Voltage[i] >= 4.0f) {
-			haltech_tms4.TPMS_Voltage[i] = 0.0f;
+		Haltech.TMS4.TPMS_Voltage[i] += 0.1f;
+		if (Haltech.TMS4.TPMS_Voltage[i] >= 4.0f) {
+			Haltech.TMS4.TPMS_Voltage[i] = 0.0f;
 		}
 	}
 	#endif
