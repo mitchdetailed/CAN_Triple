@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <math.h>
 #include "user_code.h"
 #include "backend_functions.h"
 #include "main.h"
@@ -1512,55 +1513,30 @@ void tx_Serial_Comms()
  * \param decimal_places : the amount of digits to the right to round to
  * \return Float Value.
  */
+float process_ieee754(uint32_t value, uint32_t bitmask, float factor, float offset, uint8_t decimal_places) {
+    // Find the least significant bit set (LSB position)
+    int lsbset = __builtin_ctz(bitmask);
 
-float process_ieee754(uint32_t value, uint32_t bitmask, float factor, float offset, uint8_t decimal_places)
-{
-	// Apply the bitmask to isolate the relevant bits
-	uint32_t result = value & bitmask;
+    // Apply the bitmask and shift the value accordingly
+    uint32_t result = (value & bitmask) >> lsbset;
 
-	// Calculate the number of bits to right-shift by finding the position of the first set bit in the bitmask
-	uint32_t rightshift = 0;
-	uint32_t temp_bitmask = bitmask;
-	while ((temp_bitmask & 1) == 0)
-	{
-		temp_bitmask >>= 1;
-		rightshift++;
-	}
+    // Interpret the result as an IEEE 754 float
+    union {
+        uint32_t uint_value;
+        float float_value;
+    } converter;
+    
+    converter.uint_value = result;
+    float ieee754_value = converter.float_value;
 
-	result >>= rightshift;
+    // Apply factor and offset
+    float processed_value = ieee754_value * factor + offset;
 
-	// Interpret the result as an IEEE 754 float
-	union UInt32FloatConverter
-	{
-		uint32_t uint_value;
-		float float_value;
-	};
+    // Apply rounding
+    float rounding_factor = powf(10.0f, decimal_places);
+    processed_value = roundf(processed_value * rounding_factor) / rounding_factor;
 
-	union UInt32FloatConverter converter;
-	converter.uint_value = result;
-	float ieee754_value = converter.float_value;
-
-	// Apply factor and offset
-	float processed_value = ieee754_value * factor + offset;
-
-	// Calculate the rounding factor based on the number of decimal places
-	float rounding_factor = 1.0f;
-	for (uint8_t i = 0; i < decimal_places; ++i)
-	{
-		rounding_factor *= 10.0f;
-	}
-
-	// Round to the specified number of decimal places
-	if (processed_value >= 0)
-	{
-		processed_value = (int)(processed_value * rounding_factor + 0.5f) / rounding_factor;
-	}
-	else
-	{
-		processed_value = (int)(processed_value * rounding_factor - 0.5f) / rounding_factor;
-	}
-
-	return processed_value;
+    return processed_value;
 }
 
 /**
@@ -1573,53 +1549,35 @@ float process_ieee754(uint32_t value, uint32_t bitmask, float factor, float offs
  * \param decimal_places : the amount of digits to the right to round to
  * \return Float Value.
  */
-float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset, int8_t decimal_places)
-{
-	uint32_t result = value & bitmask;
-	uint32_t most_significant_bit = bitmask & (~bitmask + 1);
+float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset, int8_t decimal_places) {
+    // Find the least significant bit set (LSB position)
+    int lsbset = __builtin_ctz(bitmask);
 
-	if (is_signed)
-	{
-		// If the most significant bit set in bitmask is set in value, subtract the most significant bit value
-		// and add the rest of the bits
-		if (value & most_significant_bit)
-		{
-			result = ((result & most_significant_bit) * -1) + (result & ~most_significant_bit);
-		}
-	}
+    // Shift value and bitmask if LSB is not at position 0
+    if (lsbset > 0) {
+        value >>= lsbset;
+        bitmask >>= lsbset;
+    }
 
-	// Calculate the number of bits to rightshift by finding the position of the first bit set in the bitmask
-	uint32_t rightshift = 0;
-	uint32_t temp_bitmask = bitmask;
-	while ((temp_bitmask & 1) == 0)
-	{
-		temp_bitmask >>= 1;
-		rightshift++;
-	}
+    // Find the most significant bit set (sign bit)
+    uint32_t signbit = 1 << (31 - __builtin_clz(bitmask));
 
-	result >>= rightshift;
+    double localvalue1;
+    if (is_signed && (bitmask & signbit) == signbit) {
+        // Interpret value as signed
+        localvalue1 = -1.0 * (signbit - ((bitmask ^ signbit) & value));
+    } else {
+        localvalue1 = value;
+    }
 
-	// Convert result to float and apply factor and offset
-	float processed_value = result * factor + offset;
+    // Apply factor and offset
+    localvalue1 = localvalue1 * factor + offset;
 
-	// Calculate the rounding factor based on the decimal_places without using std::pow
-	float rounding_factor = 1.0f;
-	for (uint8_t i = 0; i < decimal_places; ++i)
-	{
-		rounding_factor *= 10.0f;
-	}
+    // Apply rounding
+    float rounding_factor = powf(10.0f, decimal_places);
+    localvalue1 = roundf(localvalue1 * rounding_factor) / rounding_factor;
 
-	// Round the processed_value to the specified number of decimal places using C-style casting
-	if (processed_value >= 0)
-	{
-		processed_value = (int)(processed_value * rounding_factor + 0.5f) / rounding_factor;
-	}
-	else
-	{
-		processed_value = (int)(processed_value * rounding_factor - 0.5f) / rounding_factor;
-	}
-
-	return processed_value;
+    return (float)localvalue1;
 }
 
 /**
@@ -1631,33 +1589,31 @@ float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, floa
  * \param offset : DBC Offset.
  * \return Signed Integer Value.
  */
-int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int32_t factor, int32_t offset)
-{
-	uint32_t result = value & bitmask;
-	uint32_t most_significant_bit = bitmask & (~bitmask + 1);
+int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int32_t factor, int32_t offset) {
+    // Find the least significant bit set (LSB position)
+    int lsbset = __builtin_ctz(bitmask);
 
-	if (is_signed)
-	{
-		// If the most significant bit set in bitmask is set in value, subtract the most significant bit value
-		// and add the rest of the bits
-		if (value & most_significant_bit)
-		{
-			result = ((result & most_significant_bit) * -1) + (result & ~most_significant_bit);
-		}
-	}
+    // Shift value and bitmask if LSB is not at position 0
+    if (lsbset > 0) {
+        value >>= lsbset;
+        bitmask >>= lsbset;
+    }
 
-	// Calculate the number of bits to rightshift by finding the position of the first bit set in the bitmask
-	uint32_t rightshift = 0;
-	uint32_t temp_bitmask = bitmask;
-	while ((temp_bitmask & 1) == 0)
-	{
-		temp_bitmask >>= 1;
-		rightshift++;
-	}
+    // Find the most significant bit set (sign bit)
+    uint32_t signbit = 1 << (31 - __builtin_clz(bitmask));
 
-	result >>= rightshift;
-	float final_result = (float)result * factor + offset;
-	return final_result;
+    int32_t localvalue1;
+    if (is_signed && (bitmask & signbit) == signbit) {
+        // Interpret value as signed
+        localvalue1 = -1 * (signbit - ((bitmask ^ signbit) & value));
+    } else {
+        localvalue1 = value;
+    }
+
+    // Apply factor and offset
+    localvalue1 = localvalue1 * factor + offset;
+
+    return localvalue1;
 }
 
 /**
@@ -1668,22 +1624,23 @@ int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int3
  * \param offset : DBC Offset.
  * \return Unsigned Integer Value.
  */
-uint32_t process_unsigned_int_value(uint32_t value, uint32_t bitmask, uint32_t factor, uint32_t offset)
-{
-	uint32_t result = value & bitmask;
+uint32_t process_unsigned_int_value(uint32_t value, uint32_t bitmask, uint32_t factor, uint32_t offset) {
+    // Find the least significant bit set (LSB position)
+    int lsbset = __builtin_ctz(bitmask);
 
-	// Calculate the number of bits to rightshift by finding the position of the first bit set in the bitmask
-	uint32_t rightshift = 0;
-	uint32_t temp_bitmask = bitmask;
-	while ((temp_bitmask & 1) == 0)
-	{
-		temp_bitmask >>= 1;
-		rightshift++;
-	}
+    // Shift value and bitmask if LSB is not at position 0
+    if (lsbset > 0) {
+        value >>= lsbset;
+        bitmask >>= lsbset;
+    }
 
-	result >>= rightshift;
-	float final_result = (float)result * factor + offset;
-	return final_result;
+    // Extract the relevant bits
+    uint32_t result = value & bitmask;
+
+    // Apply factor and offset
+    result = result * factor + offset;
+
+    return result;
 }
 
 /**
@@ -1692,21 +1649,14 @@ uint32_t process_unsigned_int_value(uint32_t value, uint32_t bitmask, uint32_t f
  * \param bitmask : the Bitmask to read and right shift data if necessary
  * \return Uint32_t Value
  */
-uint32_t process_raw_value(uint32_t value, uint32_t bitmask)
-{
-	// Apply the bitmask to the value
-	uint32_t result = value & bitmask;
-	// Calculate the number of bits to rightshift by finding the position of the first bit set in the bitmask
-	uint32_t rightshift = 0;
-	uint32_t temp_bitmask = bitmask;
-	while ((temp_bitmask & 1) == 0)
-	{
-		temp_bitmask >>= 1;
-		rightshift++;
-	}
-	// Rightshift the result by the calculated number of bits
-	result >>= rightshift;
-	return result;
+uint32_t process_raw_value(uint32_t value, uint32_t bitmask) {
+    // Find the least significant bit set (LSB position)
+    int lsbset = __builtin_ctz(bitmask);
+
+    // Apply the bitmask and shift the value accordingly
+    uint32_t result = (value & bitmask) >> lsbset;
+
+    return result;
 }
 
 /**

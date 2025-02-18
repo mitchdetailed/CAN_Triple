@@ -16,7 +16,7 @@
 /* Variable Declarations */
 uint32_t serialnumber;
 CAN_ErrorCounts errors;
-float testval = 0.0f;
+double testval = 0.0f;
 /* Startup Functions */
 void events_Startup()
 {
@@ -48,8 +48,8 @@ void onReceive(CAN_Message Message)
 	{
 		if( Message.arbitration_id == 0x123)
 		{
-			testval = process_float_value(((Message.data[0] << 8) | Message.data[1]), 0x7FFF, true, 0.1, 0, 3);
-			printf("Value: %f\r\n", testval);
+			testval = process_float_value(((Message.data[0] << 8) | Message.data[1]), 0xFFFF, false, 0.02, -5, 3);
+			printf("Value: %.3lf\r\n", testval);
 		}
 	}
 	if (Message.Bus == CAN_3)
