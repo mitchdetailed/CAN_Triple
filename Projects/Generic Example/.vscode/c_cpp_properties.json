@@ -99,7 +99,7 @@
                 ]
             },
             "defines": [
-                "PLATFORMIO=60115",
+                "PLATFORMIO=60117",
                 "STM32G4xx",
                 "STM32G473xx",
                 "USE_HAL_DRIVER",
