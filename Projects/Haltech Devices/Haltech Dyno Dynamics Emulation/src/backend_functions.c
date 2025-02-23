@@ -462,7 +462,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 				Callback_Rx_ID_Type = false;
 			}
 			Callback_Rx_ID = CAN1_RxHeader.Identifier;
-			Callback_Rx_DLC = (CAN1_RxHeader.DataLength >> 16);
+			Callback_Rx_DLC = (CAN1_RxHeader.DataLength);
 			if (Callback_Rx_DLC > 8)
 			{
 				Callback_Rx_DLC = 8;
@@ -489,7 +489,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 				Callback_Rx_ID_Type = false;
 			}
 			Callback_Rx_ID = CAN2_RxHeader.Identifier;
-			Callback_Rx_DLC = (CAN2_RxHeader.DataLength >> 16);
+			Callback_Rx_DLC = (CAN2_RxHeader.DataLength);
 			if (Callback_Rx_DLC > 8)
 			{
 				Callback_Rx_DLC = 8;
@@ -516,7 +516,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 				Callback_Rx_ID_Type = false;
 			}
 			Callback_Rx_ID = CAN3_RxHeader.Identifier;
-			Callback_Rx_DLC = (CAN3_RxHeader.DataLength >> 16);
+			Callback_Rx_DLC = (CAN3_RxHeader.DataLength);
 			if (Callback_Rx_DLC > 8)
 			{
 				Callback_Rx_DLC = 8;
