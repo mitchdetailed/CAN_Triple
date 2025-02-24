@@ -1559,27 +1559,27 @@ float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, floa
         bitmask >>= lsbset;
     }
 
-    // Find the most significant bit set (sign bit)
-    uint32_t signbit = 1 << (31 - __builtin_clz(bitmask));
+    // Identify the number of bits used
+    int bit_length = 32 - __builtin_clz(bitmask); // Total bits in the bitmask
+    uint32_t sign_bit = 1 << (bit_length - 1); // The sign bit location
 
-    double localvalue1;
-    if (is_signed && (bitmask & signbit) == signbit) {
-        // Interpret value as signed
-        localvalue1 = -1.0 * (signbit - ((bitmask ^ signbit) & value));
+    int32_t signed_value;
+    if (is_signed && (value & sign_bit)) {
+        // Convert value to signed two's complement
+        signed_value = (int32_t)(value | ~bitmask);
     } else {
-        localvalue1 = value;
+        signed_value = (int32_t)value;
     }
 
     // Apply factor and offset
-    localvalue1 = localvalue1 * factor + offset;
+    float localvalue1 = signed_value * factor + offset;
 
     // Apply rounding
     float rounding_factor = powf(10.0f, decimal_places);
     localvalue1 = roundf(localvalue1 * rounding_factor) / rounding_factor;
 
-    return (float)localvalue1;
+    return localvalue1;
 }
-
 /**
  * \brief Processes CAN Data to return an Integer.
  * \param value : Value to look at
