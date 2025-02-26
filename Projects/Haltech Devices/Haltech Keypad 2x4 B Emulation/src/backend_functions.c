@@ -462,7 +462,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 				Callback_Rx_ID_Type = false;
 			}
 			Callback_Rx_ID = CAN1_RxHeader.Identifier;
-			Callback_Rx_DLC = (CAN1_RxHeader.DataLength);
+			Callback_Rx_DLC = (CAN1_RxHeader.DataLength >> 16);
 			if (Callback_Rx_DLC > 8)
 			{
 				Callback_Rx_DLC = 8;
@@ -489,7 +489,7 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 				Callback_Rx_ID_Type = false;
 			}
 			Callback_Rx_ID = CAN2_RxHeader.Identifier;
-			Callback_Rx_DLC = (CAN2_RxHeader.DataLength);
+			Callback_Rx_DLC = (CAN2_RxHeader.DataLength >> 16);
 			if (Callback_Rx_DLC > 8)
 			{
 				Callback_Rx_DLC = 8;
@@ -516,7 +516,8 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 				Callback_Rx_ID_Type = false;
 			}
 			Callback_Rx_ID = CAN3_RxHeader.Identifier;
-			Callback_Rx_DLC = (CAN3_RxHeader.DataLength);
+			Callback_Rx_DLC = (CAN3_RxHeader.DataLength >> 16);
+			printf("DLC: %d\r\n", Callback_Rx_DLC);
 			if (Callback_Rx_DLC > 8)
 			{
 				Callback_Rx_DLC = 8;
@@ -766,11 +767,11 @@ void trigger_CAN_TX()
 			CAN1_TxHeader.Identifier = can1_Tx_qData[can1_Tx_qTail].arb_id;
 			if (can1_Tx_qData[can1_Tx_qTail].dlc <= 8)
 			{
-				CAN1_TxHeader.DataLength = (can1_Tx_qData[can1_Tx_qTail].dlc);
+				CAN1_TxHeader.DataLength = (can1_Tx_qData[can1_Tx_qTail].dlc) << 16;
 			}
 			else
 			{
-				CAN1_TxHeader.DataLength = (8);
+				CAN1_TxHeader.DataLength = (8 << 16);
 			}
 			CAN1_TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
 			CAN1_TxHeader.TxFrameType = FDCAN_DATA_FRAME;
@@ -805,11 +806,11 @@ void trigger_CAN_TX()
 			CAN2_TxHeader.Identifier = can2_Tx_qData[can2_Tx_qTail].arb_id;
 			if (can2_Tx_qData[can2_Tx_qTail].dlc <= 8)
 			{
-				CAN2_TxHeader.DataLength = (can2_Tx_qData[can2_Tx_qTail].dlc);
+				CAN2_TxHeader.DataLength = (can2_Tx_qData[can2_Tx_qTail].dlc) << 16;
 			}
 			else
 			{
-				CAN2_TxHeader.DataLength = (8);
+				CAN2_TxHeader.DataLength = (8 << 16);
 			}
 			CAN2_TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
 			CAN2_TxHeader.TxFrameType = FDCAN_DATA_FRAME;
@@ -845,11 +846,11 @@ void trigger_CAN_TX()
 			CAN3_TxHeader.Identifier = can3_Tx_qData[can3_Tx_qTail].arb_id;
 			if (can3_Tx_qData[can3_Tx_qTail].dlc <= 8)
 			{
-				CAN3_TxHeader.DataLength = (can3_Tx_qData[can3_Tx_qTail].dlc);
+				CAN3_TxHeader.DataLength = (can3_Tx_qData[can3_Tx_qTail].dlc) << 16;
 			}
 			else
 			{
-				CAN3_TxHeader.DataLength = (8);
+				CAN3_TxHeader.DataLength = (8 << 16);
 			}
 			CAN3_TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
 			CAN3_TxHeader.TxFrameType = FDCAN_DATA_FRAME;
