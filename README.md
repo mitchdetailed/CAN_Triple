@@ -28,7 +28,7 @@ Returns:
 0 if no errors.
 ```
 ---
-### Setting internal 120 Ω Termination Resistor for CAN Bus(es) : 
+### Setting internal 120Ω Termination Resistor for CAN Bus(es) : 
 ```C
 uint8_t setCAN_Termination(uint8_t bus, bool activated)
 Enable or Disable CAN Termination across CANbuses
@@ -128,12 +128,27 @@ typedef struct {
 ### Processing Received CAN Data.. 
 
 There's a few functions to help process incoming CAN Message data to convert it to it's apppropriate data type. There's a few things to consider though.
+Floats are 4 bytes of memory, can hold roughly 6 decimal places of precision and can be signed(negative) values or unsigned(positive values).
+Integers are 1 to 4 bytes of memory, and can only hold whole numbers, and numbers can be Negative or Positive.
+Unsigned Integers are 1 to to 4 bytes of memory, and can only hold whole numbers, and only Positive values.
 
-If: The signal has ANY Decimal places, it will need to be stored as a float or double.
+## **Minimum and Maximum Values for Fixed-Width Integer Types in C**
 
-If: The signal is NOT a float or double, {AND} CAN hold a negative value at ANY time, it will need to be stored as a signed integer.
+### **Signed Integer Types (`int8_t`, `int16_t`, `int32_t`)**
+| Type      | Size (bits) | Minimum Value (`2’s Complement`) | Maximum Value |
+|-----------|------------|---------------------------------|--------------|
+| `int8_t`  | 8          | -128 (`-2^7`)                 | 127 (`2^7 - 1`) |
+| `int16_t` | 16         | -32,768 (`-2^15`)             | 32,767 (`2^15 - 1`) |
+| `int32_t` | 32         | -2,147,483,648 (`-2^31`)      | 2,147,483,647 (`2^31 - 1`) |
 
-All other data can be stored as an unsigned integer.
+### **Unsigned Integer Types (`uint8_t`, `uint16_t`, `uint32_t`)**
+| Type       | Size (bits) | Minimum Value | Maximum Value |
+|------------|------------|--------------|--------------|
+| `uint8_t`  | 8          | 0            | 255 (`2^8 - 1`) |
+| `uint16_t` | 16         | 0            | 65,535 (`2^16 - 1`) |
+| `uint32_t` | 32         | 0            | 4,294,967,295 (`2^32 - 1`) |
+
+---
 
 ### Storing signals as a float
 ```C
