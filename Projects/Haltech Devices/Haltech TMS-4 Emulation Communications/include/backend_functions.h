@@ -98,6 +98,7 @@ float process_ieee754(uint32_t value, uint32_t bitmask, float factor, float offs
 int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int32_t factor, int32_t offset);
 uint32_t process_unsigned_int_value(uint32_t value, uint32_t bitmask, uint32_t factor, uint32_t offset);
 uint32_t process_raw_value(uint32_t value, uint32_t bitmask);
+uint32_t prepare_output_signal(float value, uint8_t bitlength, bool is_signed, float dbcFactor, float dbcOffset);
 float roundfloat(float num, uint8_t decimal_places);
 int32_t roundfloat_to_int32(float num, uint8_t decimal_places);
 int32_t map_int(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max);

@@ -1661,6 +1661,54 @@ uint32_t process_raw_value(uint32_t value, uint32_t bitmask) {
     return result;
 }
 
+
+/**
+ * \brief Prepares a signal to be Transmitted over CAN using DBC Factors and Offsets
+ * \param value : Current value.
+ * \param bitlength : the total bitlength of the output signal.
+ * \param is_signed : false if unsigned, true if signed. 
+ * \param dbcFactor : the DBC Factor, usually a value between 0 and 1..
+ * \param dbcOffset : the DBC Offset.
+ * \return int32_t Value
+ */
+uint32_t prepare_output_signal(float value, uint8_t bitlength, bool is_signed, float dbcFactor, float dbcOffset) {
+    if (bitlength > 32) {
+        printf("Error: Bit length cannot exceed 32 bits\n");
+        return 0;
+    }
+
+    // Apply inverse factor and offset
+    value = (value - dbcOffset) / dbcFactor;
+
+    // Round to the nearest integer
+    int32_t int_value = (int32_t)round(value);
+
+    if (is_signed) {
+        int32_t min_value = -(1 << (bitlength - 1));
+        int32_t max_value = (1 << (bitlength - 1)) - 1;
+
+        // Constrain within signed bit range
+        if (int_value < min_value) int_value = min_value;
+        if (int_value > max_value) int_value = max_value;
+
+        // Convert to two's complement for negative values
+        if (int_value < 0) {
+            int_value = (1 << bitlength) + int_value;  // Two's complement conversion
+        }
+    } else {
+        uint32_t max_value = (1 << bitlength) - 1;
+
+        // Constrain within unsigned bit range
+        if (int_value < 0) int_value = 0;
+        if ((uint32_t)int_value > max_value) int_value = max_value;
+    }
+
+    // Mask to ensure only bitlength bits are used
+    uint32_t result = (uint32_t)int_value & ((1U << bitlength) - 1);
+
+    return result;
+}
+
 /**
  * \brief Scales (Maps) an integer value to fixed integer scalings (extrapolates)
  * \param x : Current value.
