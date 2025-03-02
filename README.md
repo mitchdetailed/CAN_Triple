@@ -155,7 +155,7 @@ Unsigned Integers are 1 to to 4 bytes of memory, and can only hold whole numbers
 float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset, uint8_t decimal_places);
 
 Parameters:
-value           – the byte(s) of information to be processed
+value           – the byte(s) of information to be processed.
 bitmask         – the bitmask to be applied to the bytes.
 is_signed       – false if unsigned, true if signed.
 factor          – the factor used in the DBC file.
@@ -185,7 +185,7 @@ onReceive(CAN_Message Message){
 int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int32_t factor, int32_t offset);
 
 Parameters:
-value           – the byte(s) of information to be processed
+value           – the byte(s) of information to be processed.
 bitmask         – the bitmask to be applied to the bytes.
 is_signed       – false if unsigned, true if signed.
 factor          – the factor used in the DBC file.
@@ -214,7 +214,7 @@ onReceive(CAN_Message Message){
 uint32_t process_unsigned_int_value(uint32_t value, uint32_t bitmask, uint32_t factor, uint32_t offset);
 
 Parameters:
-value           – the byte(s) of information to be processed
+value           – the byte(s) of information to be processed.
 bitmask         – the bitmask to be applied to the bytes.
 factor          – the factor used in the DBC file.
 offset          – the offset used in the DBC file.
@@ -242,8 +242,8 @@ onReceive(CAN_Message Message){
 uint32_t process_raw_value(uint32_t value, uint32_t bitmask);
 
 Parameters:
-value           – the byte(s) of information to be processed
-bitmask         – the bitmask to be applied to the bytes.
+value   – the byte(s) of information to be processed.
+bitmask – the bitmask to be applied to the bytes.
 
 Returns:
 Scaled value as a uint32_t.
@@ -265,7 +265,7 @@ onReceive(CAN_Message Message){
 float roundfloat(float num, uint8_t decimal_places);
 
 Parameters:
-value           – the input value
+value           – the input value.
 decimal_places  – how many decimal placed you would like to round to.
 
 Returns:
@@ -277,7 +277,7 @@ rounded value as a float.
 int32_t roundfloat_to_int32(float num, uint8_t decimal_places);
 
 Parameters:
-num             – input value
+num             – input value.
 decimal_places  – how many decimal placed you would like to round to.
 
 Returns:
