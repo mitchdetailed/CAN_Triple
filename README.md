@@ -154,12 +154,21 @@ Unsigned Integers are 1 to to 4 bytes of memory, and can only hold whole numbers
 ```C
 float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset, uint8_t decimal_places);
 
-//Input a value, bitmask, the is_signed Boolean, a factor, and offset and return a floating point. 
+Parameters:
+value           – the byte(s) of information to be processed
+bitmask         – the bitmask to be applied to the bytes.
+is_signed       – false if unsigned, true if signed.
+factor          – the factor used in the DBC file.
+offset          – the offset used in the DBC file.
+decimal_places  – how many decimal placed you would like to round to.
+
+Returns:
+Scaled value as a float.
 ```
 Lets assume the Engine speed is an unsigned 16 bit or 2 byte Big Endian CAN Signal on Bus 1 and Message ID 0x123 and is the first 2 bytes(indexes 0 and 1) of the Data field. It has a factor of 0.125 and an offset of 0 and we want to constrain to 3 decimal places. The code could be setup the following way. 
 
 ```C
-float engine_Speed = 0;
+float engine_Speed = 0.0f;
 onReceive(CAN_Message Message){
 	if (Message.Bus == CAN_1){
         if (Message.arbitration_id == 0x123){
@@ -174,6 +183,16 @@ onReceive(CAN_Message Message){
 ### Storing signals an integer
 ```C
 int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int32_t factor, int32_t offset);
+
+Parameters:
+value           – the byte(s) of information to be processed
+bitmask         – the bitmask to be applied to the bytes.
+is_signed       – false if unsigned, true if signed.
+factor          – the factor used in the DBC file.
+offset          – the offset used in the DBC file.
+
+Returns:
+Scaled value as a int32_t.
 ```
 Lets assume the Engine Coolant Temp is an unsigned 10 bit Little Endian CAN Signal on Bus 1 and Message ID 0x124 and is the all 8 bits of the 3rd byte(index 2), and 2 bits of the 4th byte(index 3) of the Data field. It has a factor of 1 and an offset of -40. The code could be setup the following way. 
 
@@ -193,6 +212,15 @@ onReceive(CAN_Message Message){
 ### Storing signals an unsigned integer
 ```C
 uint32_t process_unsigned_int_value(uint32_t value, uint32_t bitmask, uint32_t factor, uint32_t offset);
+
+Parameters:
+value           – the byte(s) of information to be processed
+bitmask         – the bitmask to be applied to the bytes.
+factor          – the factor used in the DBC file.
+offset          – the offset used in the DBC file.
+
+Returns:
+Scaled value as a float.
 ```
 Lets assume the Engine Oil Pressure is an unsigned 10 bit Big Endian CAN Signal on Bus 1 and Message ID 0x125 and is the all 8 bits of the 6th byte(index 5), and 2 bits of the 5th byte(index 4) of the Data field. It has a factor of 1 and an offset of 0. The code could be setup the following way. 
 
@@ -212,6 +240,13 @@ onReceive(CAN_Message Message){
 ### Simple Bitmasking and bit shifting right (if needed)
 ```C
 uint32_t process_raw_value(uint32_t value, uint32_t bitmask);
+
+Parameters:
+value           – the byte(s) of information to be processed
+bitmask         – the bitmask to be applied to the bytes.
+
+Returns:
+Scaled value as a uint32_t.
 ```
 Lets assume you are wanting to extract a bit field for an AC switch found on CAN Bus 2 and Message ID 0x126. first byte, 5th bit [00010000]. The code could be setup the following way.
 ```C
@@ -228,12 +263,25 @@ onReceive(CAN_Message Message){
 ### Rounding floats
 ```C
 float roundfloat(float num, uint8_t decimal_places);
-//provide the number, and how many decimal places you want to round to.
+
+Parameters:
+value           – the input value
+decimal_places  – how many decimal placed you would like to round to.
+
+Returns:
+rounded value as a float.
 ```
 ---
 ### Converting Floats to Decimal values with *10 factor for decimal places.
 ```C
 int32_t roundfloat_to_int32(float num, uint8_t decimal_places);
+
+Parameters:
+num             – input value
+decimal_places  – how many decimal placed you would like to round to.
+
+Returns:
+Scaled signal value as a int32_t.
 ```
 Value will be an integer value decimal shifted by the decimal places.
 ```C
@@ -242,8 +290,28 @@ int32_t endingvalue = roundfloat_to_int32(startingvalue, 4);
 // endingvalue would == 31416
 ```
 ---
+### Preparing Signals for CAN Transmission.
+Preparing a CAN signal to be sent over CAN is somewhat complicated and confusing when you are dealing with signals that are not 8,16,or 32 bits in length. this function allows you to prepare a single signal to what the output should be, based on the attributes the output signal should have. 
+```C
+uint32_t prepare_output_signal(float value, uint8_t bitlength, bool is_signed, float dbcFactor, float dbcOffset);
+
+Parameters:
+value       - signal actual value.
+bitlength   - bitlength of output signal.
+is_signed   - false if unsigned, true if signed.
+dbcFactor   - the scaling factor that would be used in the DBC file to read the signal appropriately.
+dbcOffset   - the scaling offset that would be used in the DBC file to read the signal appropriately.
+
+
+Returns:
+0 if bitlength > 32, else returns scaled output signal value.
+```
+---
+
+
+
 ### Debugging with print statements
-Debugging using print statements is offered in a few ways. while printf is supported, it is deprecated and recommend using a char array, snprintf, and serialPrint() for your code.
+Debugging using print statements is offered in a few ways. This example uses a character array, snprintf, and alternatively printf.
 
 ```C
 float engine_Speed = 1234.567;
@@ -252,5 +320,5 @@ int32_t engine_coolant_temp = 98;
 char test = "Test_Message";
 char debug_buffer[100];
 snprintf(debug_buffer, sizeof(debug_buffer), "Engine Speed: %5.1f, Vehicle Speed:%2.1f,Coolant Temp = %i,  %s", engine_Speed, vehicle_speed,engine_coolant_temp,  test);
-serialPrint(debug_buffer);
+printf("%s\r\n",debug_buffer);
 // "Engine Speed: 1234.6, Vehicle Speed:55.2,Coolant Temp = 98,  Test_Message" would be printed to terminal..
