@@ -16,12 +16,13 @@ The CAN Triple is designed to simplify the scope of interfacing multiple CAN Bus
 
 ### Setting CAN Bitrate : 
 ```C
-uint8_t setCANBitrate(uint8_t bus, uint32_t mainBitrate)
-Sets CANbus Bitrate
+uint8_t setupCANbus(uint8_t bus, uint32_t mainBitrate, enum mode)
+Sets CANbus Bitrate and Mode.
 
 Parameters:
 bus – CAN_1, CAN_2, and/or CAN_3.
 mainBitrate – Bitrate of CANbus in bits per second.
+mode - NORMAL_MODE for normal mode, LISTEN_ONLY for listen only (silent) mode.
 
 Returns:
 0 if no errors.
