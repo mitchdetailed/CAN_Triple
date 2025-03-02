@@ -94,6 +94,7 @@ uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, 
 
 // Arithmatic Functions related to CAN Reception and Transmission //
 float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset, int8_t decimal_places);
+float process_ieee754(uint32_t value, uint32_t bitmask, float factor, float offset, uint8_t decimal_places);
 int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int32_t factor, int32_t offset);
 uint32_t process_unsigned_int_value(uint32_t value, uint32_t bitmask, uint32_t factor, uint32_t offset);
 uint32_t process_raw_value(uint32_t value, uint32_t bitmask);
