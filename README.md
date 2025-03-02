@@ -302,7 +302,6 @@ is_signed   - false if unsigned, true if signed.
 dbcFactor   - the scaling factor that would be used in the DBC file to read the signal appropriately.
 dbcOffset   - the scaling offset that would be used in the DBC file to read the signal appropriately.
 
-
 Returns:
 0 if bitlength > 32, else returns scaled output signal value.
 ```
