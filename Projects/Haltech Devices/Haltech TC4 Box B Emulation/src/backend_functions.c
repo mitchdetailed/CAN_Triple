@@ -1831,11 +1831,11 @@ char *format_CAN_message(const CAN_Message *msg, char *buffer, size_t buf_size)
 	// Format the bus and arbitration ID.
 	if (msg->is_extended_id)
 	{
-		offset += snprintf(buffer + offset, buf_size - offset, "%u %08lX#", msg->Bus, msg->arbitration_id);
+		offset += snprintf(buffer + offset, buf_size - offset, "%u %08lX#",(8 - __builtin_clz(msg->Bus) + 24), msg->arbitration_id);
 	}
 	else
 	{
-		offset += snprintf(buffer + offset, buf_size - offset, "%u %03lX#", msg->Bus, msg->arbitration_id & 0x7FF);
+		offset += snprintf(buffer + offset, buf_size - offset, "%u %03lX#",(8 - __builtin_clz(msg->Bus) + 24), msg->arbitration_id & 0x7FF);
 	}
 
 	// Format the data bytes into hexadecimal.
