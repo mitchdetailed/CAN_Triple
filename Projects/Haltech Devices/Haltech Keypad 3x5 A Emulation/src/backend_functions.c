@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <inttypes.h>
 #include "user_code.h"
 #include "backend_functions.h"
 #include "main.h"
@@ -517,7 +518,6 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 			}
 			Callback_Rx_ID = CAN3_RxHeader.Identifier;
 			Callback_Rx_DLC = (CAN3_RxHeader.DataLength >> 16);
-			printf("DLC: %d\r\n", Callback_Rx_DLC);
 			if (Callback_Rx_DLC > 8)
 			{
 				Callback_Rx_DLC = 8;
@@ -1514,30 +1514,229 @@ void tx_Serial_Comms()
  * \param decimal_places : the amount of digits to the right to round to
  * \return Float Value.
  */
-float process_ieee754(uint32_t value, uint32_t bitmask, float factor, float offset, uint8_t decimal_places) {
-    // Find the least significant bit set (LSB position)
-    int lsbset = __builtin_ctz(bitmask);
+float process_ieee754(uint32_t value, uint32_t bitmask, float factor, float offset, uint8_t decimal_places)
+{
+	// Find the least significant bit set (LSB position)
+	int lsbset = __builtin_ctz(bitmask);
 
-    // Apply the bitmask and shift the value accordingly
-    uint32_t result = (value & bitmask) >> lsbset;
+	// Apply the bitmask and shift the value accordingly
+	uint32_t result = (value & bitmask) >> lsbset;
 
-    // Interpret the result as an IEEE 754 float
-    union {
-        uint32_t uint_value;
-        float float_value;
-    } converter;
-    
-    converter.uint_value = result;
-    float ieee754_value = converter.float_value;
+	// Interpret the result as an IEEE 754 float
+	union
+	{
+		uint32_t uint_value;
+		float float_value;
+	} converter;
 
-    // Apply factor and offset
-    float processed_value = ieee754_value * factor + offset;
+	converter.uint_value = result;
+	float ieee754_value = converter.float_value;
 
-    // Apply rounding
-    float rounding_factor = powf(10.0f, decimal_places);
-    processed_value = roundf(processed_value * rounding_factor) / rounding_factor;
+	// Apply factor and offset
+	float processed_value = ieee754_value * factor + offset;
 
-    return processed_value;
+	// Apply rounding
+	float rounding_factor = powf(10.0f, decimal_places);
+	processed_value = roundf(processed_value * rounding_factor) / rounding_factor;
+
+	return processed_value;
+}
+
+/**
+ * \brief Processes CAN Data from DBC Details and Data Array.
+ * \param data : The Message Bytes (Message.data)
+ * \param dbc_start_bit : The Starting bit in DBC file
+ * \param dbc_bit_length : The bit length in DBC file
+ * \param is_big_endian : True for Big Endian/Motorola/MSB/Normal, False for Little Endian/Intel/LSB/Word Swap
+ * \param datatype : DBC Datatype Enumeration, DBC_UNSIGNED = 0, DBC_SIGNED = 1, DBC_FLOAT = 2, DBC_DOUBLE = 4
+ * \param factor : DBC Factor.
+ * \param offset : DBC Offset.
+ * \param decimal_places : the amount of digits to the right to round to
+ * \return Float Value.
+ */
+double dbc_decode(const uint8_t *data, uint8_t dbc_start_bit, uint8_t dbc_bit_length, bool is_big_endian, datatype_t datatype, float factor, float offset, uint8_t decimal_places)
+{
+	uint64_t value = 0;
+
+	// Calculate initial byte and bit index.
+	int byte_index = dbc_start_bit / 8;
+	int bit_index = dbc_start_bit % 8;
+
+	// Extract bits one by one.
+	for (uint8_t i = 0; i < dbc_bit_length; i++)
+	{
+		// Extract the bit at the current position.
+		value |= ((data[byte_index] & (1 << bit_index)) >> bit_index) << i;
+
+		// Move to the next bit.
+		bit_index++;
+		if (bit_index == 8)
+		{
+			bit_index = 0;
+			if (is_big_endian)
+			{
+				// For big-endian, move to the previous byte.
+				byte_index -= 1;
+			}
+			else
+			{
+				// For little-endian, move to the next byte.
+				byte_index += 1;
+			}
+		}
+	}
+
+	// If the datatype is DBC_DOUBLE, use the DoubleUnion_t to convert the 64 bits.
+	if (datatype == DBC_DOUBLE && dbc_bit_length == 64)
+	{
+
+		DoubleUnion_t du;
+		// Copy each byte from value into the union.
+		for (int i = 0; i < 8; i++)
+		{
+			du.bytes[i] = (value >> (i * 8)) & 0xFF;
+		}
+		return du.f64;
+	}
+
+	// If the datatype is DBC_FLOAT, use the FloatUnion_t to convert the 32 bits.
+	if (datatype == DBC_FLOAT && dbc_bit_length == 32)
+	{
+
+		FloatUnion_t fu;
+		// Copy each byte from value into the union.
+		for (int i = 0; i < 4; i++)
+		{
+			fu.bytes[i] = (value >> (i * 8)) & 0xFF;
+		}
+		return fu.f32;
+	}
+
+	// For non-floating point types, perform sign extension if the signal is signed.
+	int64_t signed_value = value;
+	if (datatype == DBC_SIGNED && (value & (1ULL << (dbc_bit_length - 1))))
+	{
+		signed_value = value - (1LL << dbc_bit_length);
+	}
+
+	// Apply factor and offset.
+	double result = (double)signed_value * factor + offset;
+
+	// Round to the specified number of decimal places.
+	double scaling = pow(10.0, decimal_places);
+	result = round(result * scaling) / scaling;
+
+	return result;
+}
+
+
+/**
+ * \brief Processes CAN Data from DBC Details and Data Array.
+ * \param data : The Message Bytes
+ * \param msg_data_length : The data length of the Array.
+ * \param dbc_start_bit : The Starting bit in DBC file
+ * \param dbc_bit_length : The bit length in DBC file
+ * \param is_big_endian : True for Big Endian/Motorola/MSB/Normal, False for Little Endian/Intel/LSB/Word Swap
+ * \param datatype : DBC Datatype Enumeration, DBC_UNSIGNED = 0, DBC_SIGNED = 1, DBC_FLOAT = 2, DBC_DOUBLE = 4
+ * \param factor : DBC Factor.
+ * \param offset : DBC Offset.
+ * \return 0 if Successful, -1 | -2 if bitrange is invalid.
+ */
+int dbc_encode(uint8_t *data, size_t msg_data_length, double scaled_value, uint8_t dbc_start_bit, uint8_t dbc_bit_length, bool is_big_endian, datatype_t datatype, float factor, float offset)
+{
+	// Check if the bit range fits into the provided array.
+	if (!is_big_endian)
+	{
+		// Little-endian: Check that signal fits in total bits of the message.
+		if (dbc_start_bit + dbc_bit_length > msg_data_length * 8)
+		{
+			return -1; // Not enough space.
+		}
+	}
+	else
+	{
+		// Big-endian: Check that the signal does not underflow past the first byte.
+		int starting_byte = dbc_start_bit / 8;
+		int starting_bit = dbc_start_bit % 8;
+		int available_bits = (starting_byte + 1) * 8 - starting_bit;
+		if (dbc_bit_length > available_bits)
+		{
+			return -1; // Not enough space.
+		}
+	}
+
+	// Convert the scaled value to a raw integer representation.
+	int64_t raw = 0;
+
+	// If the datatype is DBC_DOUBLE and the bit length is 64, use the DoubleUnion_t.
+	if (datatype == DBC_DOUBLE && dbc_bit_length == 64)
+	{
+
+		DoubleUnion_t du;
+		du.f64 = scaled_value;
+		// Build the raw 64-bit integer from the union's bytes.
+		for (int i = 0; i < 8; i++)
+		{
+			raw |= ((uint64_t)du.bytes[i]) << (i * 8);
+		}
+	}
+	// If the datatype is DBC_FLOAT and the bit length is 32, use the FloatUnion_t.
+	else if (datatype == DBC_FLOAT && dbc_bit_length == 32)
+	{
+
+		FloatUnion_t fu;
+		fu.f32 = (float)scaled_value;
+		// Build the raw 32-bit integer from the union's bytes.
+		for (int i = 0; i < 4; i++)
+		{
+			raw |= ((uint64_t)fu.bytes[i]) << (i * 8);
+		}
+	}
+	// Otherwise, handle the value as an integer signal.
+	else
+	{
+		double temp = (scaled_value - offset) / factor;
+		raw = (int64_t)round(temp);
+
+		// If the signal is signed and raw is negative, convert it to two's complement.
+		if (datatype == DBC_SIGNED && raw < 0)
+		{
+			raw = (1LL << dbc_bit_length) + raw;
+		}
+	}
+
+	// Calculate the initial byte and bit index.
+	int byte_index = dbc_start_bit / 8;
+	int bit_index = dbc_start_bit % 8;
+
+	// Encode each bit of the raw value into the data array.
+	for (uint8_t i = 0; i < dbc_bit_length; i++)
+	{
+		uint8_t bit = (raw >> i) & 1;
+		if (bit)
+			data[byte_index] |= (1 << bit_index);
+		else
+			data[byte_index] &= ~(1 << bit_index);
+
+		// Advance the bit index.
+		bit_index++;
+		if (bit_index == 8)
+		{
+			bit_index = 0;
+			// Update the byte index based on endianness.
+			if (is_big_endian)
+				byte_index--; // For big-endian, move to the previous byte.
+			else
+				byte_index++; // For little-endian, move to the next byte.
+
+			// Check that the new byte_index is still valid.
+			if (byte_index < 0 || (size_t)byte_index >= msg_data_length)
+			{
+				return -2; // This should not happen if the input bit range is valid.
+			}
+		}
+	}
+	return 0;
 }
 
 /**
@@ -1550,36 +1749,41 @@ float process_ieee754(uint32_t value, uint32_t bitmask, float factor, float offs
  * \param decimal_places : the amount of digits to the right to round to
  * \return Float Value.
  */
-float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset, int8_t decimal_places) {
-    // Find the least significant bit set (LSB position)
-    int lsbset = __builtin_ctz(bitmask);
+float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset, int8_t decimal_places)
+{
+	// Find the least significant bit set (LSB position)
+	int lsbset = __builtin_ctz(bitmask);
 
-    // Shift value and bitmask if LSB is not at position 0
-    if (lsbset > 0) {
-        value >>= lsbset;
-        bitmask >>= lsbset;
-    }
+	// Shift value and bitmask if LSB is not at position 0
+	if (lsbset > 0)
+	{
+		value >>= lsbset;
+		bitmask >>= lsbset;
+	}
 
-    // Identify the number of bits used
-    int bit_length = 32 - __builtin_clz(bitmask); // Total bits in the bitmask
-    uint32_t sign_bit = 1 << (bit_length - 1); // The sign bit location
+	// Identify the number of bits used
+	int bit_length = 32 - __builtin_clz(bitmask); // Total bits in the bitmask
+	uint32_t sign_bit = 1 << (bit_length - 1);	  // The sign bit location
 
-    int32_t signed_value;
-    if (is_signed && (value & sign_bit)) {
-        // Convert value to signed two's complement
-        signed_value = (int32_t)(value | ~bitmask);
-    } else {
-        signed_value = (int32_t)value;
-    }
+	int32_t signed_value;
+	if (is_signed && (value & sign_bit))
+	{
+		// Convert value to signed two's complement
+		signed_value = (int32_t)(value | ~bitmask);
+	}
+	else
+	{
+		signed_value = (int32_t)value;
+	}
 
-    // Apply factor and offset
-    float localvalue1 = signed_value * factor + offset;
+	// Apply factor and offset
+	float localvalue1 = signed_value * factor + offset;
 
-    // Apply rounding
-    float rounding_factor = powf(10.0f, decimal_places);
-    localvalue1 = roundf(localvalue1 * rounding_factor) / rounding_factor;
+	// Apply rounding
+	float rounding_factor = powf(10.0f, decimal_places);
+	localvalue1 = roundf(localvalue1 * rounding_factor) / rounding_factor;
 
-    return localvalue1;
+	return localvalue1;
 }
 /**
  * \brief Processes CAN Data to return an Integer.
@@ -1590,32 +1794,37 @@ float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, floa
  * \param offset : DBC Offset.
  * \return Signed Integer Value.
  */
-int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int32_t factor, int32_t offset) {
-    // Find the least significant bit set (LSB position)
-    int lsbset = __builtin_ctz(bitmask);
+int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int32_t factor, int32_t offset)
+{
+	// Find the least significant bit set (LSB position)
+	int lsbset = __builtin_ctz(bitmask);
 
-    // Shift value and bitmask if LSB is not at position 0
-    if (lsbset > 0) {
-        value >>= lsbset;
-        bitmask >>= lsbset;
-    }
+	// Shift value and bitmask if LSB is not at position 0
+	if (lsbset > 0)
+	{
+		value >>= lsbset;
+		bitmask >>= lsbset;
+	}
 
-    // Identify the number of bits used
-    int bit_length = 32 - __builtin_clz(bitmask); // Total bits in the bitmask
-    uint32_t sign_bit = 1 << (bit_length - 1); // The sign bit location
+	// Identify the number of bits used
+	int bit_length = 32 - __builtin_clz(bitmask); // Total bits in the bitmask
+	uint32_t sign_bit = 1 << (bit_length - 1);	  // The sign bit location
 
-    int32_t signed_value;
-    if (is_signed && (value & sign_bit)) {
-        // Convert value to signed two's complement
-        signed_value = (int32_t)(value | ~bitmask);
-    } else {
-        signed_value = (int32_t)value;
-    }
+	int32_t signed_value;
+	if (is_signed && (value & sign_bit))
+	{
+		// Convert value to signed two's complement
+		signed_value = (int32_t)(value | ~bitmask);
+	}
+	else
+	{
+		signed_value = (int32_t)value;
+	}
 
-    // Apply factor and offset
-    int32_t localvalue1 = signed_value * factor + offset;
+	// Apply factor and offset
+	int32_t localvalue1 = signed_value * factor + offset;
 
-    return localvalue1;
+	return localvalue1;
 }
 
 /**
@@ -1626,23 +1835,25 @@ int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int3
  * \param offset : DBC Offset.
  * \return Unsigned Integer Value.
  */
-uint32_t process_unsigned_int_value(uint32_t value, uint32_t bitmask, uint32_t factor, uint32_t offset) {
-    // Find the least significant bit set (LSB position)
-    int lsbset = __builtin_ctz(bitmask);
+uint32_t process_unsigned_int_value(uint32_t value, uint32_t bitmask, uint32_t factor, uint32_t offset)
+{
+	// Find the least significant bit set (LSB position)
+	int lsbset = __builtin_ctz(bitmask);
 
-    // Shift value and bitmask if LSB is not at position 0
-    if (lsbset > 0) {
-        value >>= lsbset;
-        bitmask >>= lsbset;
-    }
+	// Shift value and bitmask if LSB is not at position 0
+	if (lsbset > 0)
+	{
+		value >>= lsbset;
+		bitmask >>= lsbset;
+	}
 
-    // Extract the relevant bits
-    uint32_t result = value & bitmask;
+	// Extract the relevant bits
+	uint32_t result = value & bitmask;
 
-    // Apply factor and offset
-    result = result * factor + offset;
+	// Apply factor and offset
+	result = result * factor + offset;
 
-    return result;
+	return result;
 }
 
 /**
@@ -1651,62 +1862,72 @@ uint32_t process_unsigned_int_value(uint32_t value, uint32_t bitmask, uint32_t f
  * \param bitmask : the Bitmask to read and right shift data if necessary
  * \return Uint32_t Value
  */
-uint32_t process_raw_value(uint32_t value, uint32_t bitmask) {
-    // Find the least significant bit set (LSB position)
-    int lsbset = __builtin_ctz(bitmask);
+uint32_t process_raw_value(uint32_t value, uint32_t bitmask)
+{
+	// Find the least significant bit set (LSB position)
+	int lsbset = __builtin_ctz(bitmask);
 
-    // Apply the bitmask and shift the value accordingly
-    uint32_t result = (value & bitmask) >> lsbset;
+	// Apply the bitmask and shift the value accordingly
+	uint32_t result = (value & bitmask) >> lsbset;
 
-    return result;
+	return result;
 }
-
 
 /**
  * \brief Prepares a signal to be Transmitted over CAN using DBC Factors and Offsets
  * \param value : Current value.
  * \param bitlength : the total bitlength of the output signal.
- * \param is_signed : false if unsigned, true if signed. 
+ * \param is_signed : false if unsigned, true if signed.
  * \param dbcFactor : the DBC Factor, usually a value between 0 and 1..
  * \param dbcOffset : the DBC Offset.
  * \return int32_t Value
  */
-uint32_t prepare_output_signal(float value, uint8_t bitlength, bool is_signed, float dbcFactor, float dbcOffset) {
-    if (bitlength > 32) {
-        printf("Error: Bit length cannot exceed 32 bits\n");
-        return 0;
-    }
+uint32_t prepare_output_signal(float value, uint8_t bitlength, bool is_signed, float dbcFactor, float dbcOffset)
+{
+	if (bitlength > 32)
+	{
+		//printf("Error: Bit length cannot exceed 32 bits\n");
+		return 0;
+	}
 
-    // Apply inverse factor and offset
-    value = (value - dbcOffset) / dbcFactor;
+	// Apply inverse factor and offset
+	value = (value - dbcOffset) / dbcFactor;
 
-    // Round to the nearest integer
-    int32_t int_value = (int32_t)round(value);
+	// Round to the nearest integer
+	int32_t int_value = (int32_t)round(value);
 
-    if (is_signed) {
-        int32_t min_value = -(1 << (bitlength - 1));
-        int32_t max_value = (1 << (bitlength - 1)) - 1;
+	if (is_signed)
+	{
+		int32_t min_value = -(1 << (bitlength - 1));
+		int32_t max_value = (1 << (bitlength - 1)) - 1;
 
-        // Constrain within signed bit range
-        if (int_value < min_value) int_value = min_value;
-        if (int_value > max_value) int_value = max_value;
+		// Constrain within signed bit range
+		if (int_value < min_value)
+			int_value = min_value;
+		if (int_value > max_value)
+			int_value = max_value;
 
-        // Convert to two's complement for negative values
-        if (int_value < 0) {
-            int_value = (1 << bitlength) + int_value;  // Two's complement conversion
-        }
-    } else {
-        uint32_t max_value = (1 << bitlength) - 1;
+		// Convert to two's complement for negative values
+		if (int_value < 0)
+		{
+			int_value = (1 << bitlength) + int_value; // Two's complement conversion
+		}
+	}
+	else
+	{
+		uint32_t max_value = (1 << bitlength) - 1;
 
-        // Constrain within unsigned bit range
-        if (int_value < 0) int_value = 0;
-        if ((uint32_t)int_value > max_value) int_value = max_value;
-    }
+		// Constrain within unsigned bit range
+		if (int_value < 0)
+			int_value = 0;
+		if ((uint32_t)int_value > max_value)
+			int_value = max_value;
+	}
 
-    // Mask to ensure only bitlength bits are used
-    uint32_t result = (uint32_t)int_value & ((1U << bitlength) - 1);
+	// Mask to ensure only bitlength bits are used
+	uint32_t result = (uint32_t)int_value & ((1U << bitlength) - 1);
 
-    return result;
+	return result;
 }
 
 /**
@@ -1831,11 +2052,11 @@ char *format_CAN_message(const CAN_Message *msg, char *buffer, size_t buf_size)
 	// Format the bus and arbitration ID.
 	if (msg->is_extended_id)
 	{
-		offset += snprintf(buffer + offset, buf_size - offset, "%u %08lX#",(8 - __builtin_clz(msg->Bus) + 24), msg->arbitration_id);
+		offset += snprintf(buffer + offset, buf_size - offset, "%u %08lX#", (8 - __builtin_clz(msg->Bus) + 24), msg->arbitration_id);
 	}
 	else
 	{
-		offset += snprintf(buffer + offset, buf_size - offset, "%u %03lX#",(8 - __builtin_clz(msg->Bus) + 24), msg->arbitration_id & 0x7FF);
+		offset += snprintf(buffer + offset, buf_size - offset, "%u %03lX#", (8 - __builtin_clz(msg->Bus) + 24), msg->arbitration_id & 0x7FF);
 	}
 
 	// Format the data bytes into hexadecimal.

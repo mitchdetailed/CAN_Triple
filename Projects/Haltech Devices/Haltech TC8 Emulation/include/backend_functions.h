@@ -32,12 +32,36 @@ typedef enum
 {
     LED_1
 } gpio_LED;
+
 typedef struct
 {
     uint8_t TxErrorCounter;
     uint8_t RxErrorCounter;
     uint8_t BusResetCounter;
 } CAN_ErrorCounts;
+
+// Define datatype_t enum
+typedef enum
+{
+    DBC_UNSIGNED = 0,
+    DBC_SIGNED = 1,
+    DBC_FLOAT = 2,
+    DBC_DOUBLE = 4
+} datatype_t;
+
+// Union for IEEE-754 float representation
+typedef union
+{
+    uint8_t bytes[4];
+    float f32;
+} FloatUnion_t;
+
+// Union for IEEE-754 double representation
+typedef union
+{
+    uint8_t bytes[8];
+    double f64;
+} DoubleUnion_t;
 
 /**
  * @brief Structure to represent a CAN network message.
@@ -93,6 +117,8 @@ void trigger_CAN_TX(void);
 uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, uint8_t rxData[8]);
 
 // Arithmatic Functions related to CAN Reception and Transmission //
+double dbc_decode(const uint8_t *data, uint8_t start_bit, uint8_t length, bool is_big_endian, datatype_t datatype, float factor, float offset, uint8_t decimal_places);
+int dbc_encode(uint8_t *data, size_t msg_data_length, double scaled_value, uint8_t dbc_start_bit, uint8_t dbc_bit_length, bool is_big_endian, datatype_t datatype, float factor, float offset);
 float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset, int8_t decimal_places);
 float process_ieee754(uint32_t value, uint32_t bitmask, float factor, float offset, uint8_t decimal_places);
 int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int32_t factor, int32_t offset);
