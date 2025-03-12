@@ -49,10 +49,10 @@ void onReceive(CAN_Message Message)
 		if( Message.arbitration_id == 0x123)
 		{	
 			// Message.data = {0x03,0xE8,0x00,0x00,0x00,0x00,0x00,0x00};
-			testval = dbc_decode(Message.data,24,8,true, DBC_SIGNED,0.1,0,3);
+			testval = dbc_decode(Message.data, DBC_SIGNED,true,24,8,0.1,0,3);
 			printf("testval = %6.3f\r\n", testval);
 			uint8_t newmessage[8] = {0}; // MAKE SURE YOU DECLARE THE ARRAY AS 0's prior..
-			dbc_encode(newmessage,8,testval,24,8,true,DBC_SIGNED,0.1,0);
+			dbc_encode(newmessage,8, DBC_SIGNED,true,24,8,0.1,0,3);
 			printf("newmessage = ");
 			for (int i = 0; i < 8; i++)
 			{

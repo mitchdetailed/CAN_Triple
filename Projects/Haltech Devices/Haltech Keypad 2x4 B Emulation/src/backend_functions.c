@@ -1545,16 +1545,16 @@ float process_ieee754(uint32_t value, uint32_t bitmask, float factor, float offs
 /**
  * \brief Processes CAN Data from DBC Details and Data Array.
  * \param data : The Message Bytes (Message.data)
+ * \param datatype : DBC Datatype Enumeration, DBC_UNSIGNED = 0, DBC_SIGNED = 1, DBC_FLOAT = 2, DBC_DOUBLE = 4
+ * \param is_big_endian : True for Big Endian/Motorola/MSB/Normal, False for Little Endian/Intel/LSB/Word Swap
  * \param dbc_start_bit : The Starting bit in DBC file
  * \param dbc_bit_length : The bit length in DBC file
- * \param is_big_endian : True for Big Endian/Motorola/MSB/Normal, False for Little Endian/Intel/LSB/Word Swap
- * \param datatype : DBC Datatype Enumeration, DBC_UNSIGNED = 0, DBC_SIGNED = 1, DBC_FLOAT = 2, DBC_DOUBLE = 4
  * \param factor : DBC Factor.
  * \param offset : DBC Offset.
  * \param decimal_places : the amount of digits to the right to round to
  * \return Float Value.
  */
-double dbc_decode(const uint8_t *data, uint8_t dbc_start_bit, uint8_t dbc_bit_length, bool is_big_endian, datatype_t datatype, float factor, float offset, uint8_t decimal_places)
+double dbc_decode(const uint8_t *data, datatype_t datatype, bool is_big_endian, uint8_t dbc_start_bit, uint8_t dbc_bit_length, float factor, float offset, uint8_t decimal_places)
 {
 	uint64_t value = 0;
 
@@ -1634,15 +1634,15 @@ double dbc_decode(const uint8_t *data, uint8_t dbc_start_bit, uint8_t dbc_bit_le
  * \brief Processes CAN Data from DBC Details and Data Array.
  * \param data : The Message Bytes
  * \param msg_data_length : The data length of the Array.
+ * \param datatype : DBC Datatype Enumeration, DBC_UNSIGNED = 0, DBC_SIGNED = 1, DBC_FLOAT = 2, DBC_DOUBLE = 4
+ * \param is_big_endian : True for Big Endian/Motorola/MSB/Normal, False for Little Endian/Intel/LSB/Word Swap
  * \param dbc_start_bit : The Starting bit in DBC file
  * \param dbc_bit_length : The bit length in DBC file
- * \param is_big_endian : True for Big Endian/Motorola/MSB/Normal, False for Little Endian/Intel/LSB/Word Swap
- * \param datatype : DBC Datatype Enumeration, DBC_UNSIGNED = 0, DBC_SIGNED = 1, DBC_FLOAT = 2, DBC_DOUBLE = 4
  * \param factor : DBC Factor.
  * \param offset : DBC Offset.
  * \return 0 if Successful, -1 | -2 if bitrange is invalid.
  */
-int dbc_encode(uint8_t *data, size_t msg_data_length, double scaled_value, uint8_t dbc_start_bit, uint8_t dbc_bit_length, bool is_big_endian, datatype_t datatype, float factor, float offset)
+int dbc_encode(uint8_t *data, size_t msg_data_length, datatype_t datatype, bool is_big_endian, double scaled_value, uint8_t dbc_start_bit, uint8_t dbc_bit_length, float factor, float offset)
 {
 	// Check if the bit range fits into the provided array.
 	if (!is_big_endian)
