@@ -118,7 +118,7 @@ uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, 
 
 // Arithmatic Functions related to CAN Reception and Transmission //
 double dbc_decode(const uint8_t *data, datatype_t datatype, bool is_big_endian, uint8_t dbc_start_bit, uint8_t dbc_bit_length, float factor, float offset, uint8_t decimal_places);
-int dbc_encode(uint8_t *data, size_t msg_data_length, double scaled_value, uint8_t dbc_start_bit, uint8_t dbc_bit_length, bool is_big_endian, datatype_t datatype, float factor, float offset);
+int dbc_encode(uint8_t *data, size_t msg_data_length, datatype_t datatype, bool is_big_endian, double scaled_value, uint8_t dbc_start_bit, uint8_t dbc_bit_length, float factor, float offset);
 float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset, int8_t decimal_places);
 float process_ieee754(uint32_t value, uint32_t bitmask, float factor, float offset, uint8_t decimal_places);
 int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int32_t factor, int32_t offset);
