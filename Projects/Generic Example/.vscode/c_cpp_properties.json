@@ -8,8 +8,8 @@
         {
             "name": "PlatformIO",
             "includePath": [
-                "C:/Users/mitch/Desktop/fixing errors/031025/CAN_Triple/Projects/Generic Example/include",
-                "C:/Users/mitch/Desktop/fixing errors/031025/CAN_Triple/Projects/Generic Example/src",
+                "C:/Users/mitch/Desktop/fixing errors/CAN_Triple/Projects/Generic Example/include",
+                "C:/Users/mitch/Desktop/fixing errors/CAN_Triple/Projects/Generic Example/src",
                 "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/CMSIS/Include",
                 "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/CMSIS/Device/ST/STM32G4xx/Include",
                 "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/STM32G4xx_HAL_Driver/Inc",
@@ -54,8 +54,8 @@
             "browse": {
                 "limitSymbolsToIncludedHeaders": true,
                 "path": [
-                    "C:/Users/mitch/Desktop/fixing errors/031025/CAN_Triple/Projects/Generic Example/include",
-                    "C:/Users/mitch/Desktop/fixing errors/031025/CAN_Triple/Projects/Generic Example/src",
+                    "C:/Users/mitch/Desktop/fixing errors/CAN_Triple/Projects/Generic Example/include",
+                    "C:/Users/mitch/Desktop/fixing errors/CAN_Triple/Projects/Generic Example/src",
                     "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/CMSIS/Include",
                     "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/CMSIS/Device/ST/STM32G4xx/Include",
                     "C:/Users/mitch/.platformio/packages/framework-stm32cubeg4/Drivers/STM32G4xx_HAL_Driver/Inc",
@@ -99,7 +99,7 @@
                 ]
             },
             "defines": [
-                "PLATFORMIO=60117",
+                "PLATFORMIO=60118",
                 "STM32G4xx",
                 "STM32G473xx",
                 "USE_HAL_DRIVER",

@@ -1,6 +1,20 @@
+import subprocess
+import sys
+
+def install_module(module_name):
+    subprocess.check_call([sys.executable, '-m', 'pip', 'install', module_name])
+
+# Example usage
+try:
+    from SCons.Script import Import
+except ImportError:
+    print("SCons not found, installing now...")
+    install_module('scons')
+    from SCons.Script import Import
+
 import os
 import re
-from SCons.Script import Import
+
 
 Import("env")
 
