@@ -2074,7 +2074,7 @@ char *format_CAN_message(const CAN_Message *msg, char *buffer, size_t buf_size)
 {
 	int offset = 0;
 	float ts = getTimestamp();
-	offset += snprintf(buffer + offset, buf_size - offset, "(%09.4f) ", ts);
+	offset += snprintf(buffer + offset, buf_size - offset, "(%011.4f) ", ts);
 	// Format the bus and arbitration ID.
 	if (msg->is_extended_id)
 	{
