@@ -1509,6 +1509,45 @@ void serialPrint(const char *str)
 }
 
 /**
+ * \brief Write binary data to Serial Terminal
+ * \param data Pointer to binary data buffer
+ * \param length Number of bytes to write
+ */
+void serialWrite(const uint8_t *data, uint16_t length)
+{
+	if (uart_array == 0)
+	{
+		if (array0.length + length < UART_MSG_BUFFER_SIZE)
+		{
+			memcpy(&array0.array[array0.length], data, length);
+			array0.length += length;
+		}
+		else
+		{
+			// Handle overflow, e.g., log error
+			// Binary data dropped due to buffer overflow - array0 full
+		}
+	}
+	else if (uart_array == 1)
+	{
+		if (array1.length + length < UART_MSG_BUFFER_SIZE)
+		{
+			memcpy(&array1.array[array1.length], data, length);
+			array1.length += length;
+		}
+		else
+		{
+			// Handle overflow, e.g., log error
+			// Binary data dropped due to buffer overflow - array1 full
+		}
+	}
+	else
+	{
+		// Handle invalid array_selector, e.g., log error
+	}
+}
+
+/**
  * \brief Backend Function to Send Messages to Serial Terminal
  */
 void tx_Serial_Comms()
@@ -2074,7 +2113,7 @@ char *format_CAN_message(const CAN_Message *msg, char *buffer, size_t buf_size)
 {
 	int offset = 0;
 	float ts = getTimestamp();
-	offset += snprintf(buffer + offset, buf_size - offset, "(%09.4f) ", ts);
+	offset += snprintf(buffer + offset, buf_size - offset, "(%011.4f) ", ts);
 	// Format the bus and arbitration ID.
 	if (msg->is_extended_id)
 	{

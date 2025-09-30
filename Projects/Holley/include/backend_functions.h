@@ -165,6 +165,7 @@ void writeFlash(uint32_t page, uint8_t *Data, uint16_t dataSize);
 
 // UART Debugger Function Prototypes //
 void serialPrint(const char *str);
+void serialWrite(const uint8_t *data, uint16_t length);
 void tx_Serial_Comms();
 void onSerialReceive(uint8_t *serialMessage);
 
