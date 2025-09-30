@@ -10,7 +10,7 @@
 /* Defines Declarations */
 #ifndef INC_USER_CODE_H_
 #define INC_USER_CODE_H_
-#define UART_MSG_BUFFER_SIZE 4096 /* UART String Buffer Size - Increased for higher message rates*/
+#define UART_MSG_BUFFER_SIZE 8192 /* UART String Buffer Size - Increased for higher message rates*/
 #define CAN_MSG_BUFFER_SIZE 512   /* < Must Be incremented by a factor of 2. eg.(4,8,16,32,64,..,256,512) */
 // #define UART_DEBUG_BAUDRATE       115200      /* Default UART Debug Baudrate*/
 // #define UART_DEBUG_BAUDRATE       921600      /* Teleplot Max UART Debug Baudrate?*/

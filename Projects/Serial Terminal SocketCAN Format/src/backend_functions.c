@@ -1459,14 +1459,18 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if (uart_array == 0)
 	{
-		memset(array1.array, 0, sizeof(array1.array));
-		array1.length = 0;
+		// Just finished transmitting array0, clear it and switch to array1
+		memset(array0.array, 0, sizeof(array0.array));
+		array0.length = 0;
+		uart_array = 1;  // Switch to array1 for new incoming data
 		uart_sending = false;
 	}
 	else if (uart_array == 1)
 	{
-		memset(array0.array, 0, sizeof(array0.array));
-		array0.length = 0;
+		// Just finished transmitting array1, clear it and switch to array0  
+		memset(array1.array, 0, sizeof(array1.array));
+		array1.length = 0;
+		uart_array = 0;  // Switch to array0 for new incoming data
 		uart_sending = false;
 	}
 }
@@ -1517,15 +1521,15 @@ void tx_Serial_Comms()
 	{
 		if (uart_array == 0 && array0.length > 0)
 		{
-			uart_array ^= 1;
 			uart_sending = true;
 			HAL_UART_Transmit_DMA(&huart1, (uint8_t *)array0.array, array0.length);
+			// DON'T switch uart_array here - wait for DMA completion callback
 		}
 		else if (uart_array == 1 && array1.length > 0)
 		{
-			uart_array ^= 1;
 			uart_sending = true;
 			HAL_UART_Transmit_DMA(&huart1, (uint8_t *)array1.array, array1.length);
+			// DON'T switch uart_array here - wait for DMA completion callback
 		}
 	}
 }

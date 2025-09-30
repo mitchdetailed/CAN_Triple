@@ -41,12 +41,13 @@ void onSerialReceive(uint8_t *serialMessage)
 
 void onReceive(CAN_Message Message)
 {
-	// What do you want to do when you receive a CAN message.. ?
-	if (Message.Bus == CAN_1)
-	{
+
 	char formatted_message[100];  // Increased buffer size
 	format_CAN_message(&Message, formatted_message, sizeof(formatted_message));
 	printf("%s\r\n", formatted_message);
+	// What do you want to do when you receive a CAN message.. ?
+	if (Message.Bus == CAN_1)
+	{
 	}
 	if (Message.Bus == CAN_2)
 	{
