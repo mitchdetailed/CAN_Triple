@@ -42,16 +42,14 @@ void onSerialReceive(uint8_t *serialMessage)
 void onReceive(CAN_Message Message)
 {
 	// What do you want to do when you receive a CAN message.. ?
-	char formatted_message[50];
-	format_CAN_message(&Message, formatted_message, sizeof(formatted_message));
-	printf("%s\r\n", formatted_message);
 	if (Message.Bus == CAN_1)
 	{
-		send_message(CAN_2, Message.is_extended_id, Message.arbitration_id, Message.dlc, Message.data);
+	char formatted_message[100];  // Increased buffer size
+	format_CAN_message(&Message, formatted_message, sizeof(formatted_message));
+	printf("%s\r\n", formatted_message);
 	}
 	if (Message.Bus == CAN_2)
 	{
-		send_message(CAN_1, Message.is_extended_id, Message.arbitration_id, Message.dlc, Message.data);
 	}
 	if (Message.Bus == CAN_3)
 	{
@@ -96,9 +94,6 @@ void events_20Hz()
 /* Run 10Hz Functions here */
 void events_10Hz()
 {
-	uint8_t msgdata1[8] = {countervalue, countervalue + 1 % 256, countervalue + 2 % 256, countervalue + 3 % 256, countervalue + 4 % 256, countervalue + 5 % 256, countervalue + 6 % 256, countervalue + 7 % 256};
-	send_message(CAN_1, false, 0x123, 8, msgdata1);
-	countervalue++;
 }
 
 /* Run 5Hz Functions here */

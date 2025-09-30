@@ -24,46 +24,46 @@ struct q_CAN_Msg
 };
 
 // CAN RX Queue
-uint8_t can1_Rx_qHead = 0;
-uint8_t can1_Rx_qTail = 0;
+uint16_t can1_Rx_qHead = 0;
+uint16_t can1_Rx_qTail = 0;
 struct q_CAN_Msg can1_Rx_qData[CAN_MSG_BUFFER_SIZE];
-uint8_t can1_Rx_qNextHead = 0;
-uint8_t can1_Rx_qElements = 0;
+uint16_t can1_Rx_qNextHead = 0;
+uint16_t can1_Rx_qElements = 0;
 
 // CAN 1 TX Queue
-uint8_t can1_Tx_qHead = 0;
-uint8_t can1_Tx_qTail = 0;
+uint16_t can1_Tx_qHead = 0;
+uint16_t can1_Tx_qTail = 0;
 struct q_CAN_Msg can1_Tx_qData[CAN_MSG_BUFFER_SIZE];
-uint8_t can1_Tx_qNextHead = 0;
-uint8_t can1_Tx_qElements = 0;
+uint16_t can1_Tx_qNextHead = 0;
+uint16_t can1_Tx_qElements = 0;
 
 // CAN 2 RX Queue
-uint8_t can2_Rx_qHead = 0;
-uint8_t can2_Rx_qTail = 0;
+uint16_t can2_Rx_qHead = 0;
+uint16_t can2_Rx_qTail = 0;
 struct q_CAN_Msg can2_Rx_qData[CAN_MSG_BUFFER_SIZE];
-uint8_t can2_Rx_qNextHead = 0;
-uint8_t can2_Rx_qElements = 0;
+uint16_t can2_Rx_qNextHead = 0;
+uint16_t can2_Rx_qElements = 0;
 
 // CAN 2 TX Queue
-uint8_t can2_Tx_qHead = 0;
-uint8_t can2_Tx_qTail = 0;
+uint16_t can2_Tx_qHead = 0;
+uint16_t can2_Tx_qTail = 0;
 struct q_CAN_Msg can2_Tx_qData[CAN_MSG_BUFFER_SIZE];
-uint8_t can2_Tx_qNextHead = 0;
-uint8_t can2_Tx_qElements = 0;
+uint16_t can2_Tx_qNextHead = 0;
+uint16_t can2_Tx_qElements = 0;
 
 // CAN 3 RX Queue
-uint8_t can3_Rx_qHead = 0;
-uint8_t can3_Rx_qTail = 0;
+uint16_t can3_Rx_qHead = 0;
+uint16_t can3_Rx_qTail = 0;
 struct q_CAN_Msg can3_Rx_qData[CAN_MSG_BUFFER_SIZE];
-uint8_t can3_Rx_qNextHead = 0;
-uint8_t can3_Rx_qElements = 0;
+uint16_t can3_Rx_qNextHead = 0;
+uint16_t can3_Rx_qElements = 0;
 
 // CAN 3 TX Queue
-uint8_t can3_Tx_qHead = 0;
-uint8_t can3_Tx_qTail = 0;
+uint16_t can3_Tx_qHead = 0;
+uint16_t can3_Tx_qTail = 0;
 struct q_CAN_Msg can3_Tx_qData[CAN_MSG_BUFFER_SIZE];
-uint8_t can3_Tx_qNextHead = 0;
-uint8_t can3_Tx_qElements = 0;
+uint16_t can3_Tx_qNextHead = 0;
+uint16_t can3_Tx_qElements = 0;
 
 bool Can1_RxMsgEXT_ID;
 uint32_t Can1_RxMsgID;
@@ -701,6 +701,12 @@ void trigger_CAN_RX()
 {
 	while (can1_Rx_qElements > 0)
 	{
+		__disable_irq();  // Protect queue access
+		if (can1_Rx_qElements == 0) {
+			__enable_irq();
+			break;  // Double-check after disabling interrupts
+		}
+		
 		message.Bus = CAN_1;
 		message.is_extended_id = can1_Rx_qData[can1_Rx_qTail].EXT_ID;
 		message.arbitration_id = can1_Rx_qData[can1_Rx_qTail].arb_id;
@@ -711,12 +717,20 @@ void trigger_CAN_RX()
 		}
 		can1_Rx_qTail = (can1_Rx_qTail + 1) & 0xFF;
 		can1_Rx_qElements--;
-		// Now, you can call onReceive with a single CANMessage struct.
+		__enable_irq();  // Re-enable interrupts
+		
+ 		// Now, you can call onReceive with a single CANMessage struct.
 		onReceive(message);
 	}
 
 	while (can2_Rx_qElements > 0)
 	{
+		__disable_irq();  // Protect queue access
+		if (can2_Rx_qElements == 0) {
+			__enable_irq();
+			break;  // Double-check after disabling interrupts
+		}
+		
 		message.Bus = CAN_2;
 		message.is_extended_id = can2_Rx_qData[can2_Rx_qTail].EXT_ID;
 		message.arbitration_id = can2_Rx_qData[can2_Rx_qTail].arb_id;
@@ -727,11 +741,19 @@ void trigger_CAN_RX()
 		}
 		can2_Rx_qTail = (can2_Rx_qTail + 1) & 0xFF;
 		can2_Rx_qElements--;
+		__enable_irq();  // Re-enable interrupts
+		
 		/* */ // Do things with the  Can 2 Messages here....
 		onReceive(message);
 	}
 	while (can3_Rx_qElements > 0)
 	{
+		__disable_irq();  // Protect queue access
+		if (can3_Rx_qElements == 0) {
+			__enable_irq();
+			break;  // Double-check after disabling interrupts
+		}
+		
 		message.Bus = CAN_3;
 		message.is_extended_id = can3_Rx_qData[can3_Rx_qTail].EXT_ID;
 		message.arbitration_id = can3_Rx_qData[can3_Rx_qTail].arb_id;
@@ -742,6 +764,8 @@ void trigger_CAN_RX()
 		}
 		can3_Rx_qTail = (can3_Rx_qTail + 1) & 0xFF;
 		can3_Rx_qElements--;
+		__enable_irq();  // Re-enable interrupts
+		
 		/* */ // Do things with the  Can 3 Messages here....
 		onReceive(message);
 	}
@@ -1462,6 +1486,7 @@ void serialPrint(const char *str)
 		else
 		{
 			// Handle overflow, e.g., log error
+			// Message dropped due to buffer overflow - array0 full
 		}
 	}
 	else if (uart_array == 1)
@@ -1474,6 +1499,7 @@ void serialPrint(const char *str)
 		else
 		{
 			// Handle overflow, e.g., log error
+			// Message dropped due to buffer overflow - array1 full
 		}
 	}
 	else
@@ -2048,7 +2074,7 @@ char *format_CAN_message(const CAN_Message *msg, char *buffer, size_t buf_size)
 {
 	int offset = 0;
 	float ts = getTimestamp();
-	offset += snprintf(buffer + offset, buf_size - offset, "(%014.4f00) can", ts);
+	offset += snprintf(buffer + offset, buf_size - offset, "(%09.4f) ", ts);
 	// Format the bus and arbitration ID.
 	if (msg->is_extended_id)
 	{
