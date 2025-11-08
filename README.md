@@ -260,6 +260,74 @@ onReceive(CAN_Message Message){
 }
 ```
 ---
+
+### Advanced DBC Signal Processing : Decoding from CAN Message Data
+```C
+double dbc_decode(const uint8_t *data, datatype_t datatype, bool is_big_endian, uint8_t dbc_start_bit, uint8_t dbc_bit_length, float factor, float offset, uint8_t decimal_places)
+Processes CAN Data from DBC Details and Data Array to decode signals directly from CAN message data.
+
+Parameters:
+data            – The Message Bytes (Message.data).
+datatype        – DBC Datatype Enumeration: DBC_UNSIGNED = 0, DBC_SIGNED = 1, DBC_FLOAT = 2, DBC_DOUBLE = 4.
+is_big_endian   – True for Big Endian/Motorola/MSB/Normal, False for Little Endian/Intel/LSB/Word Swap.
+dbc_start_bit   – The Starting bit in DBC file.
+dbc_bit_length  – The bit length in DBC file.
+factor          – DBC Factor.
+offset          – DBC Offset.
+decimal_places  – The amount of digits to the right to round to.
+
+Returns:
+Decoded signal value as a double.
+```
+
+Example usage for decoding an engine speed signal:
+```C
+double engine_speed = 0.0;
+onReceive(CAN_Message Message){
+    if (Message.Bus == CAN_1){
+        if (Message.arbitration_id == 0x123){
+            // Decode engine speed: 16-bit unsigned, big endian, starting at bit 0, factor 0.125, offset 0
+            engine_speed = dbc_decode(Message.data, DBC_UNSIGNED, true, 0, 16, 0.125, 0, 3);
+        }
+    }
+}
+```
+---
+### Advanced DBC Signal Processing : Encoding to CAN Message Data
+```C
+int dbc_encode(uint8_t *data, size_t msg_data_length, datatype_t datatype, bool is_big_endian, double scaled_value, uint8_t dbc_start_bit, uint8_t dbc_bit_length, float factor, float offset)
+Processes a scaled value and encodes it into CAN message data array using DBC specifications.
+
+Parameters:
+data            – The Message Bytes array to encode into.
+msg_data_length – The data length of the Array.
+datatype        – DBC Datatype Enumeration: DBC_UNSIGNED = 0, DBC_SIGNED = 1, DBC_FLOAT = 2, DBC_DOUBLE = 4.
+is_big_endian   – True for Big Endian/Motorola/MSB/Normal, False for Little Endian/Intel/LSB/Word Swap.
+scaled_value    – The actual signal value to encode.
+dbc_start_bit   – The Starting bit in DBC file.
+dbc_bit_length  – The bit length in DBC file.
+factor          – DBC Factor.
+offset          – DBC Offset.
+
+Returns:
+0 if successful, -1 or -2 if bitrange is invalid.
+```
+
+Example usage for encoding a throttle position signal:
+```C
+uint8_t tx_data[8] = {0}; // Initialize transmission data
+double throttle_position = 75.5; // 75.5% throttle
+onReceive(CAN_Message Message){
+    // Encode throttle position: 16-bit unsigned, big endian, starting at bit 16, factor 0.1, offset 0
+    if (dbc_encode(tx_data, 8, DBC_UNSIGNED, true, throttle_position, 16, 16, 0.1, 0) == 0) {
+        // Successfully encoded, now send the message
+        send_message(CAN_1, false, 0x456, 8, tx_data);
+    }
+}
+```
+---
+
+
 ### Rounding floats
 ```C
 float roundfloat(float num, uint8_t decimal_places);
