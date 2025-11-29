@@ -23,7 +23,7 @@ double testval = 0.0f;
  * -------------------------------------------------------------------------*/
 
 // IDs
-#define ID_STEERING_CLUTCH      0xBF   // steering wheel clutch message (ID_0x0BF)
+#define ID_STEERING_CLUTCH      0xBF   // steering wheel clutch message (ID 0x0BF)
 #define ID_BLINK_KEYPAD_IO      0x195  // Blink keypad I/O
 #define ID_BLINK_KEYPAD_LED     0x215  // Blink keypad illumination
 #define ID_BLINK_HEARTBEAT      0x715  // Blink keypad heartbeat
@@ -53,30 +53,43 @@ double testval = 0.0f;
  *   b50L10_Clutch_A      : 43|10@0+
  *   b60L10_Clutch_B      : 49|10@0+
  *
- * Clutch_A (43|10) and Clutch_B (49|10) overlap in bit-space, they’re two
- * redundant views over the same region. Decode both independently
- * and use their average as a 10-bit “clutch raw” in [0..1023] for throttle mapping.
+ * Clutch_A and Clutch_B are two redundant sensors on the same clutch paddle.
+ * We decode both, check them against each other, and derive a single clutch%
+ * for throttle mapping. 0% values from log:
+ *   - Clutch_A ≈ 246
+ *   - Clutch_B ≈ 744
+ * 100% values from log:
+ *   - Clutch_A ≈ 753
+ *   - Clutch_B ≈ 277
  */
 
-// Clutch 10-bit interpretation
-#define CLUTCH10_RAW_MIN_VALID    0u
-#define CLUTCH10_RAW_MAX_VALID    1023u
-#define CLUTCH10_MAX_STEP_RAW     150u     // max allowed jump between frames (tune on car)
-#define CLUTCH10_FULL_SCALE       1023u
-
-// Clutch_A / Clutch_B DBC start bits and lengths
+// Clutch_A / Clutch_B DBC start bits and lengths (Intel LE bit numbering)
 #define CLUTCH_A_START_BIT        43u
 #define CLUTCH_A_LENGTH_BITS      10u
 #define CLUTCH_B_START_BIT        49u
 #define CLUTCH_B_LENGTH_BITS      10u
+
+// Per-channel 0% / 100% calibration (from log)
+#define CLUTCH_A_RAW_0PCT         246u
+#define CLUTCH_A_RAW_100PCT       753u
+#define CLUTCH_B_RAW_0PCT         744u
+#define CLUTCH_B_RAW_100PCT       277u
+
+// Clutch plausibility config
+#define CLUTCH_PCT_MIN_VALID     -20.0f   // allow some overshoot for noise
+#define CLUTCH_PCT_MAX_VALID     120.0f
+#define CLUTCH_AB_MAX_DIFF_PCT    10.0f   // max allowed A/B disagreement
+#define CLUTCH_MAX_STEP_PCT       25.0f   // max change per 0xBF frame
 
 // "Static" clutch value when in throttle mode, sent to the car on 0xBF B6/B7.
 // This is the OEM 0% clutch pattern measured from logs (16-bit composite).
 #define CLUTCH_RAW_STATIC_0PCT    0xDAE8u
 
 // Throttle filtering / slew limiting
-#define THROTTLE_MAX_STEP_PER_FRAME  10u    // max +-10% change per 0xBF frame
-#define THROTTLE_FILTER_ALPHA        0.5f   // 0..1, 1=none, smaller=more smoothing
+// 0xBF is ~200 Hz from the log, so use that as the filter rate.
+#define BF_MESSAGE_RATE_HZ          200.0f
+#define THROTTLE_FILTER_TIME_CONST  0.05f   // 50 ms time constant for throttle filter
+#define THROTTLE_MAX_STEP_PER_FRAME 10u     // max +-10% change per 0xBF frame
 
 // Timeouts
 #define BF_TIMEOUT_TICKS_100HZ       50     // 50 ticks @100Hz ≈ 0.5s
@@ -95,9 +108,9 @@ typedef enum
 static gateway_mode_t g_mode        = MODE_CLUTCH;
 static bool           g_failsafe    = false;   // when true, always pure pass-through
 
-// Clutch plausibility (on derived 10-bit raw)
-static uint16_t g_last_clutch_raw   = 0;
-static bool     g_have_last_clutch  = false;
+// Clutch plausibility (on derived percent)
+static float   g_last_clutch_pct   = 0.0f;
+static bool    g_have_last_clutch  = false;
 
 // Throttle filtering
 static uint8_t g_last_throttle_byte = 0;
@@ -152,55 +165,132 @@ static uint16_t extract_bits_le(const uint8_t *data, uint8_t start_bit, uint8_t 
     return (uint16_t)value;
 }
 
-/**
- * Convert a 10-bit clutch raw value [0..1023] to percent [0..100].
- * Linear mapping using the DBC's 0..1023 range.
- */
-static float clutch10_to_percent(uint16_t raw10)
-{
-    if (raw10 > CLUTCH10_FULL_SCALE)
-        raw10 = CLUTCH10_FULL_SCALE;
+/* ---------------------------------------------------------------------------
+ * Clutch A/B conversion & plausibility
+ * -------------------------------------------------------------------------*/
 
-    float pct = (100.0f * (float)raw10) / (float)CLUTCH10_FULL_SCALE;
-    return clampf(pct, THROTTLE_MIN_PCT, THROTTLE_MAX_PCT);
+/**
+ * Convert raw Clutch_A reading to percent using calibrated 0% and 100% values.
+ */
+static float clutchA_raw_to_percent(uint16_t rawA)
+{
+    float span = (float)(CLUTCH_A_RAW_100PCT - CLUTCH_A_RAW_0PCT);
+    if (span <= 0.0f)
+        return 0.0f; // shouldn't happen
+
+    float pct = ((float)rawA - (float)CLUTCH_A_RAW_0PCT) * 100.0f / span;
+    return pct;
 }
 
 /**
- * Plausibility check on derived 10-bit clutch raw value.
- *  - Range check
- *  - Rate-of-change check vs last frame
+ * Convert raw Clutch_B reading to percent using calibrated 0% and 100% values.
+ * Note Clutch_B is inverted (0% high, 100% low).
  */
-static bool clutch_plausible(uint16_t raw10)
+static float clutchB_raw_to_percent(uint16_t rawB)
 {
-    if (raw10 < CLUTCH10_RAW_MIN_VALID || raw10 > CLUTCH10_RAW_MAX_VALID)
+    float span = (float)(CLUTCH_B_RAW_0PCT - CLUTCH_B_RAW_100PCT);
+    if (span <= 0.0f)
+        return 0.0f; // shouldn't happen
+
+    float pct = ((float)CLUTCH_B_RAW_0PCT - (float)rawB) * 100.0f / span;
+    return pct;
+}
+
+/**
+ * Plausibility of individual clutch% value (range + rate-of-change vs last good).
+ */
+static bool clutch_pct_plausible(float pct)
+{
+    // Hard range check
+    if (pct < CLUTCH_PCT_MIN_VALID || pct > CLUTCH_PCT_MAX_VALID)
     {
         return false;
     }
 
     if (g_have_last_clutch)
     {
-        uint16_t diff = (raw10 > g_last_clutch_raw)
-                            ? (raw10 - g_last_clutch_raw)
-                            : (g_last_clutch_raw - raw10);
-        if (diff > CLUTCH10_MAX_STEP_RAW)
+        float diff = (pct > g_last_clutch_pct)
+                         ? (pct - g_last_clutch_pct)
+                         : (g_last_clutch_pct - pct);
+
+        if (diff > CLUTCH_MAX_STEP_PCT)
         {
             return false;
         }
     }
 
-    g_last_clutch_raw  = raw10;
+    g_last_clutch_pct  = pct;
     g_have_last_clutch = true;
     return true;
 }
 
-/* Checksum for 0xBF Data0 (B0_Validation)
+/**
+ * Combine Clutch_A and Clutch_B into a single plausible clutch%.
+ *
+ *  - Convert each to percent using calibrated 0% and 100% raw values.
+ *  - Check each channel individually is in a sane percent range.
+ *  - Check their difference is within CLUTCH_AB_MAX_DIFF_PCT.
+ *
+ * On success:
+ *   *pct_out = average of A and B (after clamping to [0..100]),
+ *   returns true.
+ *
+ * On failure:
+ *   returns false (caller should trigger failsafe).
  */
+static bool clutch_pair_to_percent(uint16_t rawA, uint16_t rawB, float *pct_out)
+{
+    float pctA = clutchA_raw_to_percent(rawA);
+    float pctB = clutchB_raw_to_percent(rawB);
+
+    bool validA = (pctA >= CLUTCH_PCT_MIN_VALID && pctA <= CLUTCH_PCT_MAX_VALID);
+    bool validB = (pctB >= CLUTCH_PCT_MIN_VALID && pctB <= CLUTCH_PCT_MAX_VALID);
+
+    if (!validA && !validB)
+    {
+        // Both channels out of sane range -> fail
+        return false;
+    }
+
+    if (validA && validB)
+    {
+        float diff = (pctA > pctB) ? (pctA - pctB) : (pctB - pctA);
+        if (diff > CLUTCH_AB_MAX_DIFF_PCT)
+        {
+            // Channels disagree too much -> fail
+            return false;
+        }
+
+        float avg = 0.5f * (pctA + pctB);
+        *pct_out = clampf(avg, THROTTLE_MIN_PCT, THROTTLE_MAX_PCT);
+        return true;
+    }
+
+    // One channel is clearly bad, the other is usable. Trust the usable one.
+    if (validA)
+    {
+        *pct_out = clampf(pctA, THROTTLE_MIN_PCT, THROTTLE_MAX_PCT);
+        return true;
+    }
+
+    if (validB)
+    {
+        *pct_out = clampf(pctB, THROTTLE_MIN_PCT, THROTTLE_MAX_PCT);
+        return true;
+    }
+
+    return false; // should not reach here
+}
+
+/* ---------------------------------------------------------------------------
+ * Checksum for 0xBF Data0 (B0_Validation)
+ * -------------------------------------------------------------------------*/
+
 static uint8_t bf_compute_data0(uint8_t dlc,
                                 uint8_t d1, uint8_t d2,
                                 uint8_t d3, uint8_t d4,
                                 uint8_t d5, uint8_t d6, uint8_t d7)
 {
-    // helper to get bit
     #define B(v, bit) (((v) >> (bit)) & 1u)
 
     // Output bit 0
@@ -482,12 +572,17 @@ static void handle_steering_0xBF_from_CAN1(CAN_Message *msg)
     uint16_t rawA = extract_bits_le(msg->data, CLUTCH_A_START_BIT, CLUTCH_A_LENGTH_BITS);
     uint16_t rawB = extract_bits_le(msg->data, CLUTCH_B_START_BIT, CLUTCH_B_LENGTH_BITS);
 
-    // Combine them: use simple average as 10-bit "clutch raw"
-    uint16_t raw_clutch10 = (uint16_t)((rawA + rawB) / 2u);
+    // Derive clutch% from redundant sensors, with mutual plausibility
+    float clutch_pct = 0.0f;
 
-    if (!clutch_plausible(raw_clutch10))
+    if (!clutch_pair_to_percent(rawA, rawB, &clutch_pct))
     {
-        enter_failsafe("0xBF clutch raw implausible (A/B)");
+        enter_failsafe("0xBF clutch A/B redundant sensors implausible");
+    }
+
+    if (!clutch_pct_plausible(clutch_pct))
+    {
+        enter_failsafe("0xBF clutch rate/range implausible");
     }
 
     // If failsafe is active, always behave as simple pass-through.
@@ -506,15 +601,12 @@ static void handle_steering_0xBF_from_CAN1(CAN_Message *msg)
         return;
     }
 
-    float clutch_pct = clutch10_to_percent(raw_clutch10);
-
     if (g_mode == MODE_THROTTLE)
     {
         // Map clutch% -> throttle%, then filter + slew limit
-        float throttle_pct = clutch_pct;
-        throttle_pct       = clampf(throttle_pct, THROTTLE_MIN_PCT, THROTTLE_MAX_PCT);
+        float throttle_pct = clampf(clutch_pct, THROTTLE_MIN_PCT, THROTTLE_MAX_PCT);
 
-        // Filter
+        // Filter using backend 1st-order LPF at ~0xBF rate
         if (!g_have_last_throttle)
         {
             g_throttle_filtered  = throttle_pct;
@@ -522,8 +614,11 @@ static void handle_steering_0xBF_from_CAN1(CAN_Message *msg)
         }
         else
         {
-            g_throttle_filtered += THROTTLE_FILTER_ALPHA *
-                                   (throttle_pct - g_throttle_filtered);
+            g_throttle_filtered = lowpass_filter_by_frequency(
+                                      g_throttle_filtered,
+                                      throttle_pct,
+                                      THROTTLE_FILTER_TIME_CONST,
+                                      BF_MESSAGE_RATE_HZ);
         }
 
         // Convert to integer, clamp
@@ -550,7 +645,7 @@ static void handle_steering_0xBF_from_CAN1(CAN_Message *msg)
         thr_msg[0] = target_thr;
         send_message(CAN_3, false, ID_THROTTLE_DEMAND, 8, thr_msg);
 
-        // Freeze clutch bytes towards the car using the known 0% 
+        // Freeze clutch bytes towards the car using the known 0% pattern
         tx_data[6] = (uint8_t)(CLUTCH_RAW_STATIC_0PCT >> 8);
         tx_data[7] = (uint8_t)(CLUTCH_RAW_STATIC_0PCT & 0xFF);
 
@@ -562,11 +657,11 @@ static void handle_steering_0xBF_from_CAN1(CAN_Message *msg)
                                                   tx_data[7]);
         tx_data[0] = new_validation;
 
-        printf("[BF THR] Clutch_A=%u Clutch_B=%u raw10=%u clutch_pct=%.1f "
+        printf("[BF THR] Clutch_A=%u Clutch_B=%u clutch_pct=%.1f "
                "thr_cmd=%3u filtered=%.1f val=0x%02X "
                "rx=[%02X %02X %02X %02X %02X %02X %02X %02X] "
                "tx=[%02X %02X %02X %02X %02X %02X %02X %02X]\r\n",
-               rawA, rawB, raw_clutch10, clutch_pct,
+               rawA, rawB, clutch_pct,
                target_thr, g_throttle_filtered,
                (unsigned)new_validation,
                msg->data[0], msg->data[1], msg->data[2], msg->data[3],
@@ -577,9 +672,9 @@ static void handle_steering_0xBF_from_CAN1(CAN_Message *msg)
     else
     {
         // In clutch mode, log and pass-through (0xBF unchanged)
-        printf("[BF CLU] Clutch_A=%u Clutch_B=%u raw10=%u clutch_pct=%.1f "
+        printf("[BF CLU] Clutch_A=%u Clutch_B=%u clutch_pct=%.1f "
                "rx=[%02X %02X %02X %02X %02X %02X %02X %02X]\r\n",
-               rawA, rawB, raw_clutch10, clutch_pct,
+               rawA, rawB, clutch_pct,
                msg->data[0], msg->data[1], msg->data[2], msg->data[3],
                msg->data[4], msg->data[5], msg->data[6], msg->data[7]);
     }
