@@ -163,6 +163,10 @@ float read_float_from_address(void *address);
 char *read_char_array_from_address(const void *source, size_t length);
 void writeFlash(uint32_t page, uint8_t *Data, uint16_t dataSize);
 
+// filtering functions //
+float lowpass_filter_by_frequency(float basevalue, float newvalue, float time_constant, float frequency);
+float lowpass_filter_by_timedelta(float basevalue, float newvalue,  float time_constant, float last_timestamp, float current_timestamp);
+
 // UART Debugger Function Prototypes //
 void serialPrint(const char *str);
 void serialWrite(const uint8_t *data, uint16_t length);

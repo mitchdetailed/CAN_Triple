@@ -2132,3 +2132,36 @@ char *format_CAN_message(const CAN_Message *msg, char *buffer, size_t buf_size)
 
 	return buffer;
 }
+
+
+/**
+ * \brief First Order Low Pass Filter driven by a frequency timebase.
+ * \param basevalue The Original Averaged Value
+ * \param newvalue The new Value to add to the Average
+ * \param time_constant The Time Constant for averaging
+ * \param freqency The frequency in Hz for the function call
+ * \return updated Averaged Value
+ */
+float lowpass_filter_by_frequency(float basevalue, float newvalue, float time_constant, float frequency)
+{
+    float dt = 1.0f / frequency;
+    float alpha = dt / (time_constant + dt);
+    return basevalue + alpha * (newvalue - base);
+}
+
+/**
+ * \brief First Order Low Pass Filter driven from a delta timebase
+ * \param basevalue The Original Averaged Value
+ * \param newvalue The new Value to add to the Average
+ * \param time_constant The Time Constant for averaging
+ * \param freqency The frequency in Hz for the function call
+ * \return updated Averaged Value
+ */
+float lowpass_filter_by_timedelta(float basevalue, float newvalue,  float time_constant, float last_timestamp, float current_timestamp)
+{
+    float dt = now_ts - last_ts;
+    if (dt <= 0.0f) return base;   // protect from bad timestamps
+
+    float alpha = dt / (time_constant + dt);
+    return base + alpha * (newval - base);
+}
