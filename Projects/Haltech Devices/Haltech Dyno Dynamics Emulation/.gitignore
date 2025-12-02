@@ -1,0 +1,29 @@
+# PlatformIO build files
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# PlatformIO IDE settings
+.vscode/
+
+# IntelliSense database
+*.code-workspace
+*.sdf
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Mac OS files
+.DS_Store
+
+# Windows thumbnail cache
+Thumbs.db
+
+# Python virtual environments
+.venv/
+env/
+venv/
+
+# Logs
+*.log
