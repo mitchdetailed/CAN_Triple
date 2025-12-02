@@ -2146,7 +2146,7 @@ float lowpass_filter_by_frequency(float basevalue, float newvalue, float time_co
 {
     float dt = 1.0f / frequency;
     float alpha = dt / (time_constant + dt);
-    return basevalue + alpha * (newvalue - base);
+    return basevalue + alpha * (newvalue - basevalue);
 }
 
 /**
@@ -2159,9 +2159,9 @@ float lowpass_filter_by_frequency(float basevalue, float newvalue, float time_co
  */
 float lowpass_filter_by_timedelta(float basevalue, float newvalue,  float time_constant, float last_timestamp, float current_timestamp)
 {
-    float dt = now_ts - last_ts;
-    if (dt <= 0.0f) return base;   // protect from bad timestamps
+    float dt = current_timestamp - last_timestamp;
+    if (dt <= 0.0f) return basevalue;   // protect from bad timestamps
 
     float alpha = dt / (time_constant + dt);
-    return base + alpha * (newval - base);
+    return basevalue + alpha * (newvalue - basevalue);
 }
