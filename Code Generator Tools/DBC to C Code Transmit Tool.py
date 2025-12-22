@@ -257,17 +257,9 @@ for msg in sorted_messages:
         'is_extended': "true" if msg.is_extended_frame else "false",
         'node_name': node_name,     # The struct instance to use
         'common_signals': [],
-        'mux_signal_name': None,
+        'mux_switch': None,      # The defined Multiplexer Switch Signal
         'multiplexed_groups': {} # id -> list of signal dicts
     }
-
-    # Identify Multiplexor
-    mux_signal = None
-    for sig in msg.signals:
-        if sig.is_multiplexer:
-            mux_signal = sig
-            msg_data['mux_signal_name'] = get_formatted_signal_name(sig)
-            break
 
     # Group Signals
     for sig in msg.signals:
@@ -276,27 +268,47 @@ for msg in sorted_messages:
         dbc_start = get_dbc_start_bit(sig)
         datatype = get_dbc_datatype_enum(sig)
         is_big = "true" if sig.byte_order == 'big_endian' else "false"
-        decimals = get_decimal_places(sig)
+        # decimals = get_decimal_places(sig) # Removed
         
         s_name = get_formatted_signal_name(sig)
         
         # Args for dbc_encode:
         # (data, msg_data_length, datatype, is_big_endian, scaled_value, dbc_start_bit, dbc_bit_length, factor, offset)
         
-        encode_args = f"{node_name}.Message, {msg.length}, {datatype}, {is_big}, {node_name}.{s_name}, {dbc_start}, {sig.length}, {sig.scale}, {sig.offset}"
+        # Default: Use variable from struct
+        encode_args_var = f"{node_name}.Message, {msg.length}, {datatype}, {is_big}, {node_name}.{s_name}, {dbc_start}, {sig.length}, {sig.scale}, {sig.offset}"
         
+        # Placeholder version for Mux Switch (Values will be injected)
+        encode_args_val_pattern = f"{node_name}.Message, {msg.length}, {datatype}, {is_big}, REPLACE_VAL, {dbc_start}, {sig.length}, {sig.scale}, {sig.offset}"
+
         sig_ctx = {
             'name': s_name,
-            'args': encode_args
+            'args': encode_args_var
         }
+        
+        if sig.is_multiplexer:
+            # This is the Switch
+            msg_data['mux_switch'] = {
+                'name': s_name,
+                'args_var': encode_args_var,
+                'args_val': encode_args_val_pattern
+            }
+            # Do NOT add to common_signals
+            continue
 
         if sig.multiplexer_ids:
             for mux_id in sig.multiplexer_ids:
-                if mux_id not in msg_data['multiplexed_groups']:
-                    msg_data['multiplexed_groups'][mux_id] = []
-                msg_data['multiplexed_groups'][mux_id].append(sig_ctx)
+                mux_hex = f"0x{mux_id:X}"
+                if mux_hex not in msg_data['multiplexed_groups']:
+                    msg_data['multiplexed_groups'][mux_hex] = []
+                msg_data['multiplexed_groups'][mux_hex].append(sig_ctx)
         else:
             msg_data['common_signals'].append(sig_ctx)
+
+    # Sort multiplexed groups by ID value (ascending)
+    if msg_data['multiplexed_groups']:
+        sorted_groups = sorted(msg_data['multiplexed_groups'].items(), key=lambda item: int(item[0], 16))
+        msg_data['multiplexed_groups'] = dict(sorted_groups)
 
     messages_data.append(msg_data)
 
@@ -330,29 +342,52 @@ typedef struct {
 //################ You will need to define the CAN Bus  you're wanting to transmit to for each message send_message() function.  ################
 //################ Copy each block to the appropriate function frequency you want the message to be sent at.  ################
 {% for msg in messages %}
-// Setup Message: {{ msg.name }} (ID: 0x{{ msg.id }})
-memset({{ msg.node_name }}.Message, 0, 8);
+// Message: {{ msg.name }} (ID: 0x{{ msg.id }})
+{%- if msg.multiplexed_groups %}
 
-// Common Signals
-{%- for sig in msg.common_signals %}
-dbc_encode({{ sig.args }});
-{%- endfor %}
-
-{%- if msg.mux_signal_name %}
-// Multiplexed Signals
-switch ((int){{ msg.node_name }}.{{ msg.mux_signal_name }}) {
+    {# MULTIPLEXED MESSAGE GENERATION #}
     {%- for mux_id, group_signals in msg.multiplexed_groups.items() %}
-    case {{ mux_id }}:
-        {%- for sig in group_signals %}
-        dbc_encode({{ sig.args }});
-        {%- endfor %}
-        break;
-    {%- endfor %}
-}
-{%- endif %}
 
-// Send Message
-send_message($ID$, {{ msg.is_extended }}, 0x{{ msg.id }}, {{ msg.dlc }}, {{ msg.node_name }}.Message);
+    // --- Mux ID: {{ mux_id }} ---
+    memset({{ msg.node_name }}.Message, 0, 8);
+    
+    // Mux Switch Signal (Value: {{ mux_id }})
+    dbc_encode({{ msg.mux_switch.args_val | replace('REPLACE_VAL', mux_id) }});
+    
+    // Common Signals
+    {%- for sig in msg.common_signals %}
+    dbc_encode({{ sig.args }});
+    {%- endfor %}
+    
+    // Mux-Specific Signals
+    {%- for sig in group_signals %}
+    dbc_encode({{ sig.args }});
+    {%- endfor %}
+    
+    // Send
+    send_message($BUS$, {{ msg.is_extended }}, 0x{{ msg.id }}, {{ msg.dlc }}, {{ msg.node_name }}.Message);
+    
+    {%- endfor %}
+
+{%- else %}
+
+    {# STANDARD MESSAGE GENERATION #}
+    memset({{ msg.node_name }}.Message, 0, 8);
+    
+    // Common Signals
+    {%- for sig in msg.common_signals %}
+    dbc_encode({{ sig.args }});
+    {%- endfor %}
+    
+    {%- if msg.mux_switch %}
+    // Mux Switch (If applicable, fallback)
+    dbc_encode({{ msg.mux_switch.args_var }});
+    {%- endif %}
+    
+    // Send
+    send_message($BUS$, {{ msg.is_extended }}, 0x{{ msg.id }}, {{ msg.dlc }}, {{ msg.node_name }}.Message);
+
+{%- endif %}
 
 {% endfor %}
 //################ End Generated Encode Logic ################
