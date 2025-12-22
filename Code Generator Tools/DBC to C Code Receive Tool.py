@@ -333,13 +333,15 @@ if(Message.arbitration_id == 0x{{ msg.id }})
     
     // Multiplexed Signals
     switch ((int){{ msg.node_name }}.{{ msg.mux_signal_name }}) {
-        {%- for mux_id, group_signals in msg.multiplexed_groups.items() %}
-        case {{ mux_id }}:
+        {%- for mux_id, group_signals in msg.multiplexed_groups.items()|sort %}
+        case 0x{{ '%X' % mux_id }}:
             {%- for sig in group_signals %}
             {{ msg.node_name }}.{{ sig.name }} = {{ sig.cast }}dbc_decode({{ sig.args }});
             {%- endfor %}
             break;
         {%- endfor %}
+        default:
+            break;
     }
     {%- endif %}
 }
