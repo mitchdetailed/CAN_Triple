@@ -15,87 +15,102 @@
 #include "main.h"
 #include "stm32g4xx_hal.h"
 
-struct q_CAN_Msg
+struct q_CAN1_Msg
 {
 	bool EXT_ID;
 	uint32_t arb_id;
 	uint8_t dlc;
-	uint8_t data[8];
+	uint8_t data[CAN1_DATALENGTH];
+};
+
+struct q_CAN2_Msg
+{
+	bool EXT_ID;
+	uint32_t arb_id;
+	uint8_t dlc;
+	uint8_t data[CAN2_DATALENGTH];
+};
+
+struct q_CAN3_Msg
+{
+	bool EXT_ID;
+	uint32_t arb_id;
+	uint8_t dlc;
+	uint8_t data[CAN3_DATALENGTH];
 };
 
 // CAN RX Queue
 uint16_t can1_Rx_qHead = 0;
 uint16_t can1_Rx_qTail = 0;
-struct q_CAN_Msg can1_Rx_qData[CAN_MSG_BUFFER_SIZE];
+struct q_CAN1_Msg can1_Rx_qData[CAN1_RX_MSG_BUFFER_SIZE];
 uint16_t can1_Rx_qNextHead = 0;
 uint16_t can1_Rx_qElements = 0;
 
 // CAN 1 TX Queue
 uint16_t can1_Tx_qHead = 0;
 uint16_t can1_Tx_qTail = 0;
-struct q_CAN_Msg can1_Tx_qData[CAN_MSG_BUFFER_SIZE];
+struct q_CAN1_Msg can1_Tx_qData[CAN1_TX_MSG_BUFFER_SIZE];
 uint16_t can1_Tx_qNextHead = 0;
 uint16_t can1_Tx_qElements = 0;
 
 // CAN 2 RX Queue
 uint16_t can2_Rx_qHead = 0;
 uint16_t can2_Rx_qTail = 0;
-struct q_CAN_Msg can2_Rx_qData[CAN_MSG_BUFFER_SIZE];
+struct q_CAN2_Msg can2_Rx_qData[CAN2_RX_MSG_BUFFER_SIZE];
 uint16_t can2_Rx_qNextHead = 0;
 uint16_t can2_Rx_qElements = 0;
 
 // CAN 2 TX Queue
 uint16_t can2_Tx_qHead = 0;
 uint16_t can2_Tx_qTail = 0;
-struct q_CAN_Msg can2_Tx_qData[CAN_MSG_BUFFER_SIZE];
+struct q_CAN2_Msg can2_Tx_qData[CAN2_TX_MSG_BUFFER_SIZE];
 uint16_t can2_Tx_qNextHead = 0;
 uint16_t can2_Tx_qElements = 0;
 
 // CAN 3 RX Queue
 uint16_t can3_Rx_qHead = 0;
 uint16_t can3_Rx_qTail = 0;
-struct q_CAN_Msg can3_Rx_qData[CAN_MSG_BUFFER_SIZE];
+struct q_CAN3_Msg can3_Rx_qData[CAN3_RX_MSG_BUFFER_SIZE];
 uint16_t can3_Rx_qNextHead = 0;
 uint16_t can3_Rx_qElements = 0;
 
 // CAN 3 TX Queue
 uint16_t can3_Tx_qHead = 0;
 uint16_t can3_Tx_qTail = 0;
-struct q_CAN_Msg can3_Tx_qData[CAN_MSG_BUFFER_SIZE];
+struct q_CAN3_Msg can3_Tx_qData[CAN3_TX_MSG_BUFFER_SIZE];
 uint16_t can3_Tx_qNextHead = 0;
 uint16_t can3_Tx_qElements = 0;
 
 bool Can1_RxMsgEXT_ID;
 uint32_t Can1_RxMsgID;
 uint8_t Can1_RxMsgDLC;
-uint8_t Can1_RxMsgData[8];
+uint8_t Can1_RxMsgData[CAN1_DATALENGTH];
 
 bool Can2_RxMsgEXT_ID;
 uint32_t Can2_RxMsgID;
 uint8_t Can2_RxMsgDLC;
-uint8_t Can2_RxMsgData[8];
+uint8_t Can2_RxMsgData[CAN2_DATALENGTH];
 
 bool Can3_RxMsgEXT_ID;
 uint32_t Can3_RxMsgID;
 uint8_t Can3_RxMsgDLC;
-uint8_t Can3_RxMsgData[8];
+uint8_t Can3_RxMsgData[CAN3_DATALENGTH];
 
 FDCAN_RxHeaderTypeDef CAN1_RxHeader;
-uint8_t CAN1_RxData[8];
+uint8_t CAN1_RxData[CAN1_DATALENGTH];
 FDCAN_TxHeaderTypeDef CAN1_TxHeader;
-uint8_t CAN1_TxData[8];
+uint8_t CAN1_TxData[CAN1_DATALENGTH];
 
 FDCAN_RxHeaderTypeDef CAN2_RxHeader;
-uint8_t CAN2_RxData[8];
+uint8_t CAN2_RxData[CAN2_DATALENGTH];
 FDCAN_TxHeaderTypeDef CAN2_TxHeader;
-uint8_t CAN2_TxData[8];
+uint8_t CAN2_TxData[CAN2_DATALENGTH];
 
 FDCAN_RxHeaderTypeDef CAN3_RxHeader;
-uint8_t CAN3_RxData[8];
+uint8_t CAN3_RxData[CAN3_DATALENGTH];
 FDCAN_TxHeaderTypeDef CAN3_TxHeader;
-uint8_t CAN3_TxData[8];
+uint8_t CAN3_TxData[CAN3_DATALENGTH];
 
-CAN_Message message;
 bool storecompleted = false;
 
 StringArray array0 = {.array = {0}, .length = 0};
@@ -106,8 +121,147 @@ bool uart_sending = false;
 uint16_t can1Reset_counter = 0; // Define the variable
 uint16_t can2Reset_counter = 0; // Define the variable
 uint16_t can3Reset_counter = 0; // Define the variable
-/* Sets CANbus Bitrate
-1M, 500k, 250k, 125k validated */
+
+/**
+ * \brief Converts a HAL FDCAN DataLength code to actual byte count.
+ * The HAL uses encoded values for FD frames: 9->12, 10->16, 11->20, 12->24, 13->32, 14->48, 15->64.
+ * For classic CAN (0-8) the code equals the byte count.
+ */
+static inline uint8_t fdcan_dlc_to_bytes(uint32_t dlc_code)
+{
+	static const uint8_t dlc_table[16] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 12, 16, 20, 24, 32, 48, 64};
+	return (dlc_code < 16U) ? dlc_table[dlc_code] : 64U;
+}
+
+/**
+ * \brief Converts actual byte count to HAL FDCAN DataLength code.
+ * Rounds up to the nearest valid FD DLC if an intermediate value is given.
+ */
+static inline uint32_t bytes_to_fdcan_dlc(uint8_t bytes)
+{
+	if (bytes <= 8U)  return (uint32_t)bytes;
+	if (bytes <= 12U) return 9U;
+	if (bytes <= 16U) return 10U;
+	if (bytes <= 20U) return 11U;
+	if (bytes <= 24U) return 12U;
+	if (bytes <= 32U) return 13U;
+	if (bytes <= 48U) return 14U;
+	return 15U; /* 64 bytes */
+}
+
+/**
+ * \brief Calculates optimal CAN bit timing parameters for a given bitrate.
+ *
+ * Targets the following sample points based on bitrate:
+ *   <= 1 Mbit/s  ->  87.5%
+ *   <= 2 Mbit/s  ->  80.0%
+ *   >  2 Mbit/s  ->  75.0%
+ *
+ * Exhaustively searches every prescaler (1..maxPrescaler) and every valid
+ * TQ count (12..32) to find the combination that minimises a weighted score
+ * of bitrate error and sample-point error.  TQ is constrained to 12..32 to
+ * ensure the SyncJumpWidth remains a meaningful fraction of the bit time
+ * (good noise immunity), with a preference for TQ values close to 16 for
+ * optimal resolution.  If no combination lands within 1% bitrate error
+ * (e.g. 800 kbps on a 170 MHz clock) the closest achievable bitrate wins.
+ *
+ * \param apb1clock     Peripheral clock in Hz.
+ * \param bitrate       Target bitrate in bits per second.
+ * \param maxPrescaler  Maximum prescaler allowed (512 for nominal, 32 for data).
+ * \param out_prescaler Output prescaler value.
+ * \param out_timeSeg1  Output TimeSeg1 value.
+ * \param out_timeSeg2  Output TimeSeg2 value.
+ */
+static void calculateBitTiming(uint32_t apb1clock, uint32_t bitrate, uint32_t maxPrescaler,
+								uint32_t *out_prescaler, uint32_t *out_timeSeg1, uint32_t *out_timeSeg2)
+{
+	/* Select target sample point based on bitrate range */
+	float targetSP;
+	if (bitrate <= 1000000UL)
+		targetSP = 0.875f; /* 87.5% for <= 1 Mbit/s */
+	else if (bitrate <= 2000000UL)
+		targetSP = 0.800f; /* 80.0% for <= 2 Mbit/s */
+	else
+		targetSP = 0.750f; /* 75.0% for >  2 Mbit/s */
+
+	/* Constrain total TQ to 12..32 for both nominal and data phases.
+	 * This keeps the SyncJumpWidth (1 TQ) a meaningful fraction of the bit
+	 * time and matches standard CAN controller recommendations.
+	 * totalTQ = 1 (sync) + TimeSeg1 + TimeSeg2
+	 */
+	const uint32_t minTQ = 12;
+	const uint32_t maxTQ = 32;
+
+	/* Safe fallback – will be overwritten on the first iteration */
+	uint32_t bestPrescaler = 1;
+	uint32_t bestSeg1      = 13;
+	uint32_t bestSeg2      = 2;
+	float    bestScore     = 1e9f;
+	uint32_t bestTQ        = 0;
+
+	/* Brute-force search: try every prescaler × TQ combination.
+	 *
+	 *   Bitrate  = apb1clock / (prescaler * totalTQ)
+	 *   SamplePt = (1 + TimeSeg1) / totalTQ
+	 *
+	 * Score = spError * 10 + brError
+	 * Combinations within 1% bitrate error score much better thanks to the
+	 * brPenalty, so they are always preferred over out-of-tolerance ones.
+	 * Ties (identical score) are broken by preferring TQ closest to 16.
+	 */
+	for (uint32_t pres = 1; pres <= maxPrescaler; pres++)
+	{
+		for (uint32_t tq = minTQ; tq <= maxTQ; tq++)
+		{
+			/* Bitrate error for this prescaler + TQ */
+			float actualBR = (float)apb1clock / ((float)pres * (float)tq);
+			float brError  = actualBR - (float)bitrate;
+			if (brError < 0.0f) brError = -brError;
+			brError /= (float)bitrate;
+
+			/* Compute TimeSeg1 that lands closest to the target sample point:
+			 *   SP = (1 + seg1) / tq  =>  seg1 = round(SP * tq) - 1
+			 */
+			uint32_t seg1 = (uint32_t)(targetSP * (float)tq + 0.5f) - 1;
+			if (seg1 < 1)      seg1 = 1;
+			if (seg1 > tq - 2) seg1 = tq - 2;
+			uint32_t seg2 = tq - 1 - seg1;
+			if (seg2 < 1)
+			{
+				seg2 = 1;
+				seg1 = tq - 2;
+			}
+
+			float actualSP = (float)(1 + seg1) / (float)tq;
+			float spError  = actualSP - targetSP;
+			if (spError < 0.0f) spError = -spError;
+
+			/* Heavy penalty for >1% bitrate error so in-tolerance solutions
+			 * always win, but the best out-of-tolerance option is kept as
+			 * a fallback rather than leaving defaults in place. */
+			float brPenalty = (brError > 0.01f) ? (brError * 100.0f) : brError;
+			float score     = spError * 10.0f + brPenalty;
+
+			/* Tie-break: prefer TQ closest to 16 (optimal resolution without
+			 * sacrificing SyncJumpWidth effectiveness). */
+			uint32_t tqDist     = (tq > 16) ? (tq - 16) : (16 - tq);
+			uint32_t bestTQDist = (bestTQ > 16) ? (bestTQ - 16) : (16 - bestTQ);
+
+			if (score < bestScore || (fabs(score - bestScore) < 0.0001f && tqDist < bestTQDist))
+			{
+				bestScore     = score;
+				bestPrescaler = pres;
+				bestSeg1      = seg1;
+				bestSeg2      = seg2;
+				bestTQ        = tq;
+			}
+		}
+	}
+
+	*out_prescaler = bestPrescaler;
+	*out_timeSeg1  = bestSeg1;
+	*out_timeSeg2  = bestSeg2;
+}
 
 /**
  * \brief Sets CANbus Bitrate
@@ -120,7 +274,16 @@ uint8_t setupCANbus(CAN_Bus bus, uint32_t mainBitrate, CAN_Mode mode)
 {
 	uint8_t returnval = 0;
 	uint32_t apb1clock = HAL_RCC_GetPCLK1Freq();
-	uint32_t prescaler = apb1clock / (mainBitrate * 17);
+
+	/* Calculate nominal timing (prescaler max 512) and data timing (prescaler max 32) */
+	uint32_t nomPrescaler, nomSeg1, nomSeg2;
+	uint32_t datPrescaler, datSeg1, datSeg2;
+	calculateBitTiming(apb1clock, mainBitrate, 512, &nomPrescaler, &nomSeg1, &nomSeg2);
+	calculateBitTiming(apb1clock, mainBitrate,  32, &datPrescaler, &datSeg1, &datSeg2);
+
+	/* SJW = min(Seg2, 4) – matches resync capability to the phase buffer */
+	uint32_t nomSJW = (nomSeg2 < 4) ? nomSeg2 : 4;
+	uint32_t datSJW = (datSeg2 < 4) ? datSeg2 : 4;
 
 	if ((bus & CAN_1) == CAN_1)
 	{
@@ -136,16 +299,16 @@ uint8_t setupCANbus(CAN_Bus bus, uint32_t mainBitrate, CAN_Mode mode)
 			hfdcan1.Init.Mode = FDCAN_MODE_BUS_MONITORING;
 		}
 		hfdcan1.Init.AutoRetransmission = ENABLE;
-		hfdcan1.Init.TransmitPause = ENABLE;
-		hfdcan1.Init.ProtocolException = DISABLE;
-		hfdcan1.Init.NominalPrescaler = prescaler;
-		hfdcan1.Init.NominalSyncJumpWidth = 1;
-		hfdcan1.Init.NominalTimeSeg1 = 14;
-		hfdcan1.Init.NominalTimeSeg2 = 2;
-		hfdcan1.Init.DataPrescaler = 10;
-		hfdcan1.Init.DataSyncJumpWidth = 1;
-		hfdcan1.Init.DataTimeSeg1 = 13;
-		hfdcan1.Init.DataTimeSeg2 = 2;
+		hfdcan1.Init.TransmitPause = DISABLE;
+		hfdcan1.Init.ProtocolException = ENABLE;
+		hfdcan1.Init.NominalPrescaler = nomPrescaler;
+		hfdcan1.Init.NominalSyncJumpWidth = nomSJW;
+		hfdcan1.Init.NominalTimeSeg1 = nomSeg1;
+		hfdcan1.Init.NominalTimeSeg2 = nomSeg2;
+		hfdcan1.Init.DataPrescaler = datPrescaler;
+		hfdcan1.Init.DataSyncJumpWidth = datSJW;
+		hfdcan1.Init.DataTimeSeg1 = datSeg1;
+		hfdcan1.Init.DataTimeSeg2 = datSeg2;
 		hfdcan1.Init.StdFiltersNbr = 0;
 		hfdcan1.Init.ExtFiltersNbr = 0;
 		hfdcan1.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
@@ -168,16 +331,16 @@ uint8_t setupCANbus(CAN_Bus bus, uint32_t mainBitrate, CAN_Mode mode)
 			hfdcan2.Init.Mode = FDCAN_MODE_BUS_MONITORING;
 		}
 		hfdcan2.Init.AutoRetransmission = ENABLE;
-		hfdcan2.Init.TransmitPause = ENABLE;
-		hfdcan2.Init.ProtocolException = DISABLE;
-		hfdcan2.Init.NominalPrescaler = prescaler;
-		hfdcan2.Init.NominalSyncJumpWidth = 1;
-		hfdcan2.Init.NominalTimeSeg1 = 14;
-		hfdcan2.Init.NominalTimeSeg2 = 2;
-		hfdcan2.Init.DataPrescaler = 10;
-		hfdcan2.Init.DataSyncJumpWidth = 1;
-		hfdcan2.Init.DataTimeSeg1 = 13;
-		hfdcan2.Init.DataTimeSeg2 = 2;
+		hfdcan2.Init.TransmitPause = DISABLE;
+		hfdcan2.Init.ProtocolException = ENABLE;
+		hfdcan2.Init.NominalPrescaler = nomPrescaler;
+		hfdcan2.Init.NominalSyncJumpWidth = nomSJW;
+		hfdcan2.Init.NominalTimeSeg1 = nomSeg1;
+		hfdcan2.Init.NominalTimeSeg2 = nomSeg2;
+		hfdcan2.Init.DataPrescaler = datPrescaler;
+		hfdcan2.Init.DataSyncJumpWidth = datSJW;
+		hfdcan2.Init.DataTimeSeg1 = datSeg1;
+		hfdcan2.Init.DataTimeSeg2 = datSeg2;
 		hfdcan2.Init.StdFiltersNbr = 0;
 		hfdcan2.Init.ExtFiltersNbr = 0;
 		hfdcan2.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
@@ -185,6 +348,14 @@ uint8_t setupCANbus(CAN_Bus bus, uint32_t mainBitrate, CAN_Mode mode)
 		{
 			returnval = 1;
 		}
+		// Debug // 
+		/*
+		uint32_t can2_totalTQ    = 1 + nomSeg1 + nomSeg2;
+		uint32_t can2_actualBR   = apb1clock / (nomPrescaler * can2_totalTQ);
+		uint32_t can2_brErr_ppm  = (uint32_t)(((int32_t)can2_actualBR - (int32_t)mainBitrate) >= 0
+		                           ? ((can2_actualBR - mainBitrate) * 1000000UL / mainBitrate)
+		                           : ((mainBitrate - can2_actualBR) * 1000000UL / mainBitrate));
+		*/
 	}
 	if ((bus & CAN_3) == CAN_3)
 	{
@@ -200,22 +371,196 @@ uint8_t setupCANbus(CAN_Bus bus, uint32_t mainBitrate, CAN_Mode mode)
 			hfdcan3.Init.Mode = FDCAN_MODE_BUS_MONITORING;
 		}
 		hfdcan3.Init.AutoRetransmission = ENABLE;
-		hfdcan3.Init.TransmitPause = ENABLE;
-		hfdcan3.Init.ProtocolException = DISABLE;
-		hfdcan3.Init.NominalPrescaler = prescaler;
-		hfdcan3.Init.NominalSyncJumpWidth = 1;
-		hfdcan3.Init.NominalTimeSeg1 = 14;
-		hfdcan3.Init.NominalTimeSeg2 = 2;
-		hfdcan3.Init.DataPrescaler = 10;
-		hfdcan3.Init.DataSyncJumpWidth = 1;
-		hfdcan3.Init.DataTimeSeg1 = 13;
-		hfdcan3.Init.DataTimeSeg2 = 2;
+		hfdcan3.Init.TransmitPause = DISABLE;
+		hfdcan3.Init.ProtocolException = ENABLE;
+		hfdcan3.Init.NominalPrescaler = nomPrescaler;
+		hfdcan3.Init.NominalSyncJumpWidth = nomSJW;
+		hfdcan3.Init.NominalTimeSeg1 = nomSeg1;
+		hfdcan3.Init.NominalTimeSeg2 = nomSeg2;
+		hfdcan3.Init.DataPrescaler = datPrescaler;
+		hfdcan3.Init.DataSyncJumpWidth = datSJW;
+		hfdcan3.Init.DataTimeSeg1 = datSeg1;
+		hfdcan3.Init.DataTimeSeg2 = datSeg2;
 		hfdcan3.Init.StdFiltersNbr = 0;
 		hfdcan3.Init.ExtFiltersNbr = 0;
 		hfdcan3.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
 		if (HAL_FDCAN_Init(&hfdcan3) != HAL_OK)
 		{
 			returnval = 1;
+		}
+	}
+	return returnval;
+}
+
+/**
+ * Estimate TDCO from an assumed loop delay (ns).
+ *
+ * fdcan_ker_hz : FDCAN kernel clock (Hz) (often 170MHz on G4 depending on clocking)
+ * data_presc   : DataPrescaler value you program into HAL (DBRP+1), 1..32
+ * loop_ns      : assumed transceiver+path loop delay in ns (e.g. 150)
+ */
+static uint32_t fdcan_tdco_from_loop_ns(uint32_t fdcan_ker_hz,
+                                 uint32_t data_presc,
+                                 uint32_t loop_ns)
+{
+  // TDCO = round(loop_ns / tDTQ) where tDTQ = data_presc / fdcan_ker_hz
+  // => TDCO = round(loop_ns * fdcan_ker_hz / (data_presc * 1e9))
+  uint64_t num = (uint64_t)loop_ns * (uint64_t)fdcan_ker_hz;
+  uint64_t den = (uint64_t)data_presc * 1000000000ULL;
+
+  uint64_t tdco = (num + den/2) / den;   // rounded division
+  if (tdco > 127U) tdco = 127U;
+  return (uint32_t)tdco;
+}
+
+/**
+ * \brief Sets up a CAN FD bus with separate nominal and data phase bitrates.
+ *
+ * \param bus           CAN_1, CAN_2, or CAN_3.
+ * \param mainBitrate   Nominal (arbitration phase) bitrate in bits per second.
+ * \param dataBitrate   Data phase bitrate in bits per second.
+ * \param bitrateSwitch true  = enable bitrate switching (FD with BRS),
+ *                      false = FD frame format but no bitrate switch.
+ * \param mode "NORMAL_MODE" or "LISTEN_ONLY"
+ * \return 0 if no errors, 1 for any error.
+ */
+uint8_t setupCAN_FDbus(CAN_Bus bus, uint32_t mainBitrate, uint32_t dataBitrate, bool bitrateSwitch, CAN_Mode mode)
+{
+	uint8_t returnval = 0;
+	uint32_t apb1clock = HAL_RCC_GetPCLK1Freq();
+
+	/* Nominal timing uses mainBitrate; data timing uses the separate dataBitrate */
+	uint32_t nomPrescaler, nomSeg1, nomSeg2;
+	uint32_t datPrescaler, datSeg1, datSeg2;
+	calculateBitTiming(apb1clock, mainBitrate, 512, &nomPrescaler, &nomSeg1, &nomSeg2);
+	calculateBitTiming(apb1clock, dataBitrate,  32, &datPrescaler, &datSeg1, &datSeg2);
+
+	/* SJW = min(Seg2, 4) – matches resync capability to the phase buffer */
+	uint32_t nomSJW = (nomSeg2 < 4) ? nomSeg2 : 4;
+	uint32_t datSJW = (datSeg2 < 4) ? datSeg2 : 4;
+
+	printf("Setup CAN FD Bus %d:\r\n", bus);
+	printf("  Nominal: Prescaler=%lu, Seg1=%lu, Seg2=%lu, SJW=%lu\r\n", nomPrescaler, nomSeg1, nomSeg2, nomSJW);
+	printf("  Data:    Prescaler=%lu, Seg1=%lu, Seg2=%lu, SJW=%lu\r\n", datPrescaler, datSeg1, datSeg2, datSJW);
+
+	uint32_t frameFormat = bitrateSwitch ? FDCAN_FRAME_FD_BRS : FDCAN_FRAME_FD_NO_BRS;
+
+	if ((bus & CAN_1) == CAN_1)
+	{
+		hfdcan1.Instance = FDCAN1;
+		hfdcan1.Init.ClockDivider = FDCAN_CLOCK_DIV1;
+		hfdcan1.Init.FrameFormat = frameFormat;
+
+		if (mode == NORMAL_MODE)
+		{
+			hfdcan1.Init.Mode = FDCAN_MODE_NORMAL;
+		}
+		else if (mode == LISTEN_ONLY)
+		{
+			hfdcan1.Init.Mode = FDCAN_MODE_BUS_MONITORING;
+		}
+		hfdcan1.Init.AutoRetransmission = ENABLE;
+		hfdcan1.Init.TransmitPause = DISABLE;
+		hfdcan1.Init.ProtocolException = ENABLE;
+		hfdcan1.Init.NominalPrescaler = nomPrescaler;
+		hfdcan1.Init.NominalSyncJumpWidth = nomSJW;
+		hfdcan1.Init.NominalTimeSeg1 = nomSeg1;
+		hfdcan1.Init.NominalTimeSeg2 = nomSeg2;
+		hfdcan1.Init.DataPrescaler = datPrescaler;
+		hfdcan1.Init.DataSyncJumpWidth = datSJW;
+		hfdcan1.Init.DataTimeSeg1 = datSeg1;
+		hfdcan1.Init.DataTimeSeg2 = datSeg2;
+		hfdcan1.Init.StdFiltersNbr = 0;
+		hfdcan1.Init.ExtFiltersNbr = 0;
+		hfdcan1.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
+		if (HAL_FDCAN_Init(&hfdcan1) != HAL_OK)
+		{
+			returnval = 1;
+		}
+
+		if (frameFormat == FDCAN_FRAME_FD_BRS)
+		{
+			uint32_t tdco = fdcan_tdco_from_loop_ns(apb1clock, datPrescaler, CANFD_LOOP_DELAY_NS);
+			HAL_FDCAN_ConfigTxDelayCompensation(&hfdcan1, tdco, 0);
+			HAL_FDCAN_EnableTxDelayCompensation(&hfdcan1);
+		}
+	}
+	if ((bus & CAN_2) == CAN_2)
+	{
+		hfdcan2.Instance = FDCAN2;
+		hfdcan2.Init.ClockDivider = FDCAN_CLOCK_DIV1;
+		hfdcan2.Init.FrameFormat = frameFormat;
+		if (mode == NORMAL_MODE)
+		{
+			hfdcan2.Init.Mode = FDCAN_MODE_NORMAL;
+		}
+		else if (mode == LISTEN_ONLY)
+		{
+			hfdcan2.Init.Mode = FDCAN_MODE_BUS_MONITORING;
+		}
+		hfdcan2.Init.AutoRetransmission = ENABLE;
+		hfdcan2.Init.TransmitPause = DISABLE;
+		hfdcan2.Init.ProtocolException = ENABLE;
+		hfdcan2.Init.NominalPrescaler = nomPrescaler;
+		hfdcan2.Init.NominalSyncJumpWidth = nomSJW;
+		hfdcan2.Init.NominalTimeSeg1 = nomSeg1;
+		hfdcan2.Init.NominalTimeSeg2 = nomSeg2;
+		hfdcan2.Init.DataPrescaler = datPrescaler;
+		hfdcan2.Init.DataSyncJumpWidth = datSJW;
+		hfdcan2.Init.DataTimeSeg1 = datSeg1;
+		hfdcan2.Init.DataTimeSeg2 = datSeg2;
+		hfdcan2.Init.StdFiltersNbr = 0;
+		hfdcan2.Init.ExtFiltersNbr = 0;
+		hfdcan2.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
+		if (HAL_FDCAN_Init(&hfdcan2) != HAL_OK)
+		{
+			returnval = 1;
+		}
+
+		if (frameFormat == FDCAN_FRAME_FD_BRS)
+		{
+			uint32_t tdco = fdcan_tdco_from_loop_ns(apb1clock, datPrescaler, CANFD_LOOP_DELAY_NS);
+			HAL_FDCAN_ConfigTxDelayCompensation(&hfdcan2, tdco, 0);
+			HAL_FDCAN_EnableTxDelayCompensation(&hfdcan2);
+		}
+	}
+	if ((bus & CAN_3) == CAN_3)
+	{
+		hfdcan3.Instance = FDCAN3;
+		hfdcan3.Init.ClockDivider = FDCAN_CLOCK_DIV1;
+		hfdcan3.Init.FrameFormat = frameFormat;
+		if (mode == NORMAL_MODE)
+		{
+			hfdcan3.Init.Mode = FDCAN_MODE_NORMAL;
+		}
+		else if (mode == LISTEN_ONLY)
+		{
+			hfdcan3.Init.Mode = FDCAN_MODE_BUS_MONITORING;
+		}
+		hfdcan3.Init.AutoRetransmission = ENABLE;
+		hfdcan3.Init.TransmitPause = DISABLE;
+		hfdcan3.Init.ProtocolException = ENABLE;
+		hfdcan3.Init.NominalPrescaler = nomPrescaler;
+		hfdcan3.Init.NominalSyncJumpWidth = nomSJW;
+		hfdcan3.Init.NominalTimeSeg1 = nomSeg1;
+		hfdcan3.Init.NominalTimeSeg2 = nomSeg2;
+		hfdcan3.Init.DataPrescaler = datPrescaler;
+		hfdcan3.Init.DataSyncJumpWidth = datSJW;
+		hfdcan3.Init.DataTimeSeg1 = datSeg1;
+		hfdcan3.Init.DataTimeSeg2 = datSeg2;
+		hfdcan3.Init.StdFiltersNbr = 0;
+		hfdcan3.Init.ExtFiltersNbr = 0;
+		hfdcan3.Init.TxFifoQueueMode = FDCAN_TX_FIFO_OPERATION;
+		if (HAL_FDCAN_Init(&hfdcan3) != HAL_OK)
+		{
+			returnval = 1;
+		}
+
+		if (frameFormat == FDCAN_FRAME_FD_BRS)
+		{
+			uint32_t tdco = fdcan_tdco_from_loop_ns(apb1clock, datPrescaler, CANFD_LOOP_DELAY_NS);
+			HAL_FDCAN_ConfigTxDelayCompensation(&hfdcan3, tdco, 0);
+			HAL_FDCAN_EnableTxDelayCompensation(&hfdcan3);
 		}
 	}
 	return returnval;
@@ -463,10 +808,10 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 				Callback_Rx_ID_Type = false;
 			}
 			Callback_Rx_ID = CAN1_RxHeader.Identifier;
-			Callback_Rx_DLC = (CAN1_RxHeader.DataLength);
-			if (Callback_Rx_DLC > 8)
+			Callback_Rx_DLC = fdcan_dlc_to_bytes(CAN1_RxHeader.DataLength);
+			if (Callback_Rx_DLC > CAN1_DATALENGTH)
 			{
-				Callback_Rx_DLC = 8;
+				Callback_Rx_DLC = CAN1_DATALENGTH;
 			}
 			add_to_CAN_RX_Queue(CAN_1, Callback_Rx_ID_Type, Callback_Rx_ID, Callback_Rx_DLC, CAN1_RxData);
 		}
@@ -490,10 +835,10 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 				Callback_Rx_ID_Type = false;
 			}
 			Callback_Rx_ID = CAN2_RxHeader.Identifier;
-			Callback_Rx_DLC = (CAN2_RxHeader.DataLength);
-			if (Callback_Rx_DLC > 8)
+			Callback_Rx_DLC = fdcan_dlc_to_bytes(CAN2_RxHeader.DataLength);
+			if (Callback_Rx_DLC > CAN2_DATALENGTH)
 			{
-				Callback_Rx_DLC = 8;
+				Callback_Rx_DLC = CAN2_DATALENGTH;
 			}
 			add_to_CAN_RX_Queue(CAN_2, Callback_Rx_ID_Type, Callback_Rx_ID, Callback_Rx_DLC, CAN2_RxData);
 		}
@@ -517,10 +862,10 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 				Callback_Rx_ID_Type = false;
 			}
 			Callback_Rx_ID = CAN3_RxHeader.Identifier;
-			Callback_Rx_DLC = (CAN3_RxHeader.DataLength);
-			if (Callback_Rx_DLC > 8)
+			Callback_Rx_DLC = fdcan_dlc_to_bytes(CAN3_RxHeader.DataLength);
+			if (Callback_Rx_DLC > CAN3_DATALENGTH)
 			{
-				Callback_Rx_DLC = 8;
+				Callback_Rx_DLC = CAN3_DATALENGTH;
 			}
 			add_to_CAN_RX_Queue(CAN_3, Callback_Rx_ID_Type, Callback_Rx_ID, Callback_Rx_DLC, CAN3_RxData);
 		}
@@ -543,12 +888,12 @@ void HAL_FDCAN_TxBufferCompleteCallback(FDCAN_HandleTypeDef *hfdcan, uint32_t Bu
 
 /* Add to CAN Receive Queue
 CAN_1: 1, CAN_2: 2, CAN_3: 4 */
-uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, uint8_t rxData[8])
+uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, uint8_t rxData[])
 {
 	uint8_t return_val = 0;
 	if ((bus & CAN_1) == CAN_1)
 	{
-		can1_Rx_qNextHead = (can1_Rx_qHead + 1) & 0xFF;
+		can1_Rx_qNextHead = (can1_Rx_qHead + 1) & (CAN1_RX_MSG_BUFFER_SIZE - 1);
 		/*  if there is room */
 		if (can1_Rx_qNextHead != can1_Rx_qTail)
 		{
@@ -570,7 +915,7 @@ uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, 
 	}
 	if ((bus & CAN_2) == CAN_2)
 	{
-		can2_Rx_qNextHead = (can2_Rx_qHead + 1) & 0xFF;
+		can2_Rx_qNextHead = (can2_Rx_qHead + 1) & (CAN2_RX_MSG_BUFFER_SIZE - 1);
 		/*  if there is room */
 		if (can2_Rx_qNextHead != can2_Rx_qTail)
 		{
@@ -592,7 +937,7 @@ uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, 
 	}
 	if ((bus & CAN_3) == CAN_3)
 	{
-		can3_Rx_qNextHead = (can3_Rx_qHead + 1) & 0xFF;
+		can3_Rx_qNextHead = (can3_Rx_qHead + 1) & (CAN3_RX_MSG_BUFFER_SIZE - 1);
 		/*  if there is room */
 		if (can3_Rx_qNextHead != can3_Rx_qTail)
 		{
@@ -624,12 +969,12 @@ uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, 
  * \param data Message data (8 Bytes).
  * \return 1, 2, or 3 based on CAN Bus applicable
  */
-uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t data[8])
+uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t data[])
 {
 	uint8_t return_val = 0;
 	if ((bus & CAN_1) == CAN_1)
 	{
-		can1_Tx_qNextHead = (can1_Tx_qHead + 1) & (CAN_MSG_BUFFER_SIZE - 1);
+		can1_Tx_qNextHead = (can1_Tx_qHead + 1) & (CAN1_TX_MSG_BUFFER_SIZE - 1);
 		/*  if there is room */
 		if (can1_Tx_qNextHead != can1_Tx_qTail)
 		{
@@ -651,7 +996,7 @@ uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, 
 	}
 	if ((bus & CAN_2) == CAN_2)
 	{
-		can2_Tx_qNextHead = (can2_Tx_qHead + 1) & (CAN_MSG_BUFFER_SIZE - 1);
+		can2_Tx_qNextHead = (can2_Tx_qHead + 1) & (CAN2_TX_MSG_BUFFER_SIZE - 1);
 		/*  if there is room */
 		if (can2_Tx_qNextHead != can2_Tx_qTail)
 		{
@@ -673,7 +1018,7 @@ uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, 
 	}
 	if ((bus & CAN_3) == CAN_3)
 	{
-		can3_Tx_qNextHead = (can3_Tx_qHead + 1) & (CAN_MSG_BUFFER_SIZE - 1);
+		can3_Tx_qNextHead = (can3_Tx_qHead + 1) & (CAN3_TX_MSG_BUFFER_SIZE - 1);
 		/*  if there is room */
 		if (can3_Tx_qNextHead != can3_Tx_qTail)
 		{
@@ -699,6 +1044,7 @@ uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, 
 /* Callback for Received Messages for OnReceive Function*/
 void trigger_CAN_RX()
 {
+	CAN_Message message;
 	while (can1_Rx_qElements > 0)
 	{
 		__disable_irq();  // Protect queue access
@@ -711,11 +1057,11 @@ void trigger_CAN_RX()
 		message.is_extended_id = can1_Rx_qData[can1_Rx_qTail].EXT_ID;
 		message.arbitration_id = can1_Rx_qData[can1_Rx_qTail].arb_id;
 		message.dlc = can1_Rx_qData[can1_Rx_qTail].dlc;
-		for (uint8_t i = 0; i < 8; i++)
+		for (uint8_t i = 0; i < message.dlc; i++)
 		{
 			message.data[i] = can1_Rx_qData[can1_Rx_qTail].data[i];
 		}
-		can1_Rx_qTail = (can1_Rx_qTail + 1) & 0xFF;
+		can1_Rx_qTail = (can1_Rx_qTail + 1) & (CAN1_RX_MSG_BUFFER_SIZE - 1);
 		can1_Rx_qElements--;
 		__enable_irq();  // Re-enable interrupts
 		
@@ -735,11 +1081,11 @@ void trigger_CAN_RX()
 		message.is_extended_id = can2_Rx_qData[can2_Rx_qTail].EXT_ID;
 		message.arbitration_id = can2_Rx_qData[can2_Rx_qTail].arb_id;
 		message.dlc = can2_Rx_qData[can2_Rx_qTail].dlc;
-		for (uint8_t i = 0; i < 8; i++)
+		for (uint8_t i = 0; i < message.dlc; i++)
 		{
 			message.data[i] = can2_Rx_qData[can2_Rx_qTail].data[i];
 		}
-		can2_Rx_qTail = (can2_Rx_qTail + 1) & 0xFF;
+		can2_Rx_qTail = (can2_Rx_qTail + 1) & (CAN2_RX_MSG_BUFFER_SIZE - 1);
 		can2_Rx_qElements--;
 		__enable_irq();  // Re-enable interrupts
 		
@@ -758,11 +1104,11 @@ void trigger_CAN_RX()
 		message.is_extended_id = can3_Rx_qData[can3_Rx_qTail].EXT_ID;
 		message.arbitration_id = can3_Rx_qData[can3_Rx_qTail].arb_id;
 		message.dlc = can3_Rx_qData[can3_Rx_qTail].dlc;
-		for (uint8_t i = 0; i < 8; i++)
+		for (uint8_t i = 0; i < message.dlc; i++)
 		{
 			message.data[i] = can3_Rx_qData[can3_Rx_qTail].data[i];
 		}
-		can3_Rx_qTail = (can3_Rx_qTail + 1) & 0xFF;
+		can3_Rx_qTail = (can3_Rx_qTail + 1) & (CAN3_RX_MSG_BUFFER_SIZE - 1);
 		can3_Rx_qElements--;
 		__enable_irq();  // Re-enable interrupts
 		
@@ -789,26 +1135,23 @@ void trigger_CAN_TX()
 			}
 
 			CAN1_TxHeader.Identifier = can1_Tx_qData[can1_Tx_qTail].arb_id;
-			if (can1_Tx_qData[can1_Tx_qTail].dlc <= 8)
 			{
-				CAN1_TxHeader.DataLength = (can1_Tx_qData[can1_Tx_qTail].dlc);
+				uint8_t can1_tx_bytes = (can1_Tx_qData[can1_Tx_qTail].dlc <= CAN1_DATALENGTH)
+				                        ? can1_Tx_qData[can1_Tx_qTail].dlc : CAN1_DATALENGTH;
+				CAN1_TxHeader.DataLength = bytes_to_fdcan_dlc(can1_tx_bytes);
 			}
-			else
-			{
-				CAN1_TxHeader.DataLength = (8);
-			}
-			CAN1_TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
+			CAN1_TxHeader.FDFormat = (can1_Tx_qData[can1_Tx_qTail].dlc > 8) ? FDCAN_FD_CAN : FDCAN_CLASSIC_CAN;
 			CAN1_TxHeader.TxFrameType = FDCAN_DATA_FRAME;
-			CAN1_TxHeader.ErrorStateIndicator = FDCAN_ESI_PASSIVE;
-			CAN1_TxHeader.BitRateSwitch = FDCAN_BRS_OFF;
+			CAN1_TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+			CAN1_TxHeader.BitRateSwitch = FDCAN_BRS_ON;
 			CAN1_TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
 			CAN1_TxHeader.MessageMarker = 0;
-			for (uint8_t i = 0; i < 8; i++)
+			for (uint8_t i = 0; i < can1_Tx_qData[can1_Tx_qTail].dlc; i++)
 			{
 				CAN1_TxData[i] = can1_Tx_qData[can1_Tx_qTail].data[i];
 			}
 			HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &CAN1_TxHeader, CAN1_TxData);
-			can1_Tx_qTail = (can1_Tx_qTail + 1) & 0xFF;
+			can1_Tx_qTail = (can1_Tx_qTail + 1) & (CAN1_TX_MSG_BUFFER_SIZE - 1);
 			can1_Tx_qElements--;
 			can1_freelevel--;
 		}
@@ -828,26 +1171,23 @@ void trigger_CAN_TX()
 				CAN2_TxHeader.IdType = FDCAN_STANDARD_ID;
 			}
 			CAN2_TxHeader.Identifier = can2_Tx_qData[can2_Tx_qTail].arb_id;
-			if (can2_Tx_qData[can2_Tx_qTail].dlc <= 8)
 			{
-				CAN2_TxHeader.DataLength = (can2_Tx_qData[can2_Tx_qTail].dlc);
+				uint8_t can2_tx_bytes = (can2_Tx_qData[can2_Tx_qTail].dlc <= CAN2_DATALENGTH)
+				                        ? can2_Tx_qData[can2_Tx_qTail].dlc : CAN2_DATALENGTH;
+				CAN2_TxHeader.DataLength = bytes_to_fdcan_dlc(can2_tx_bytes);
 			}
-			else
-			{
-				CAN2_TxHeader.DataLength = (8);
-			}
-			CAN2_TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
+			CAN2_TxHeader.FDFormat = (can2_Tx_qData[can2_Tx_qTail].dlc > 8) ? FDCAN_FD_CAN : FDCAN_CLASSIC_CAN;
 			CAN2_TxHeader.TxFrameType = FDCAN_DATA_FRAME;
-			CAN2_TxHeader.ErrorStateIndicator = FDCAN_ESI_PASSIVE;
-			CAN2_TxHeader.BitRateSwitch = FDCAN_BRS_OFF;
+			CAN2_TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+			CAN2_TxHeader.BitRateSwitch = FDCAN_BRS_ON;
 			CAN2_TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
 			CAN2_TxHeader.MessageMarker = 0;
-			for (uint8_t i = 0; i < 8; i++)
+			for (uint8_t i = 0; i < can2_Tx_qData[can2_Tx_qTail].dlc; i++)
 			{
 				CAN2_TxData[i] = can2_Tx_qData[can2_Tx_qTail].data[i];
 			}
 			HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan2, &CAN2_TxHeader, CAN2_TxData);
-			can2_Tx_qTail = (can2_Tx_qTail + 1) & 0xFF;
+			can2_Tx_qTail = (can2_Tx_qTail + 1) & (CAN2_TX_MSG_BUFFER_SIZE - 1);
 			can2_Tx_qElements--;
 			can2_freelevel--;
 		}
@@ -868,26 +1208,23 @@ void trigger_CAN_TX()
 			}
 
 			CAN3_TxHeader.Identifier = can3_Tx_qData[can3_Tx_qTail].arb_id;
-			if (can3_Tx_qData[can3_Tx_qTail].dlc <= 8)
 			{
-				CAN3_TxHeader.DataLength = (can3_Tx_qData[can3_Tx_qTail].dlc);
+				uint8_t can3_tx_bytes = (can3_Tx_qData[can3_Tx_qTail].dlc <= CAN3_DATALENGTH)
+				                        ? can3_Tx_qData[can3_Tx_qTail].dlc : CAN3_DATALENGTH;
+				CAN3_TxHeader.DataLength = bytes_to_fdcan_dlc(can3_tx_bytes);
 			}
-			else
-			{
-				CAN3_TxHeader.DataLength = (8);
-			}
-			CAN3_TxHeader.FDFormat = FDCAN_CLASSIC_CAN;
+			CAN3_TxHeader.FDFormat = (can3_Tx_qData[can3_Tx_qTail].dlc > 8) ? FDCAN_FD_CAN : FDCAN_CLASSIC_CAN;
 			CAN3_TxHeader.TxFrameType = FDCAN_DATA_FRAME;
-			CAN3_TxHeader.ErrorStateIndicator = FDCAN_ESI_PASSIVE;
-			CAN3_TxHeader.BitRateSwitch = FDCAN_BRS_OFF;
+			CAN3_TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+			CAN3_TxHeader.BitRateSwitch = FDCAN_BRS_ON;
 			CAN3_TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
 			CAN3_TxHeader.MessageMarker = 0;
-			for (uint8_t i = 0; i < 8; i++)
+			for (uint8_t i = 0; i < can3_Tx_qData[can3_Tx_qTail].dlc; i++)
 			{
 				CAN3_TxData[i] = can3_Tx_qData[can3_Tx_qTail].data[i];
 			}
 			HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan3, &CAN3_TxHeader, CAN3_TxData);
-			can3_Tx_qTail = (can3_Tx_qTail + 1) & 0xFF;
+			can3_Tx_qTail = (can3_Tx_qTail + 1) & (CAN3_TX_MSG_BUFFER_SIZE - 1);
 			can3_Tx_qElements--;
 			can3_freelevel--;
 		}
@@ -1398,7 +1735,7 @@ void toggleLED(gpio_LED led)
 /* Flash Back Data to the last Page in FLASH Memory */
 void writeFlash(uint32_t page, uint8_t *Data, uint16_t dataSize)
 {
-	if ((storecompleted == false) & (page > 30))
+	if ((storecompleted == false) && (page > 30))
 	{
 		static FLASH_EraseInitTypeDef EraseInitStruct;
 		uint32_t PAGEError;
@@ -1958,11 +2295,12 @@ uint32_t prepare_output_signal(float value, uint8_t bitlength, bool is_signed, f
 	// Apply inverse factor and offset
 	value = (value - dbcOffset) / dbcFactor;
 
-	// Round to the nearest integer
-	int32_t int_value = (int32_t)round(value);
+	uint32_t result = 0;
 
 	if (is_signed)
 	{
+		int32_t int_value = (int32_t)round(value);
+
 		int32_t min_value = -(1 << (bitlength - 1));
 		int32_t max_value = (1 << (bitlength - 1)) - 1;
 
@@ -1977,20 +2315,23 @@ uint32_t prepare_output_signal(float value, uint8_t bitlength, bool is_signed, f
 		{
 			int_value = (1 << bitlength) + int_value; // Two's complement conversion
 		}
+
+		result = (uint32_t)int_value & ((1U << bitlength) - 1);
 	}
 	else
 	{
-		uint32_t max_value = (1 << bitlength) - 1;
+		// First constrain the float
+		if (value < 0.0f) 
+			value = 0.0f;
 
-		// Constrain within unsigned bit range
-		if (int_value < 0)
-			int_value = 0;
-		if ((uint32_t)int_value > max_value)
-			int_value = max_value;
+		uint32_t max_value = (bitlength == 32) ? 0xFFFFFFFF : ((1U << bitlength) - 1);
+
+		if (value > (float)max_value)
+			value = (float)max_value;
+
+		uint32_t uint_value = (uint32_t)round(value);
+		result = uint_value & max_value;
 	}
-
-	// Mask to ensure only bitlength bits are used
-	uint32_t result = (uint32_t)int_value & ((1U << bitlength) - 1);
 
 	return result;
 }
@@ -2125,7 +2466,7 @@ char *format_CAN_message(const CAN_Message *msg, char *buffer, size_t buf_size)
 	}
 
 	// Format the data bytes into hexadecimal.
-	for (int i = 0; i < msg->dlc && i < 8; ++i)
+	for (int i = 0; i < msg->dlc && i < CAN_MSG_MAX_DLC; ++i)
 	{
 		offset += snprintf(buffer + offset, buf_size - offset, "%02X", msg->data[i]);
 	}

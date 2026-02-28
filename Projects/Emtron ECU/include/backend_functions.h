@@ -63,13 +63,17 @@ typedef union
     double f64;
 } DoubleUnion_t;
 
+/* Maximum data payload size across all three CAN buses */
+#define CAN_MSG_MAX_DLC  ((CAN1_DATALENGTH > CAN2_DATALENGTH) ? ((CAN1_DATALENGTH > CAN3_DATALENGTH) ? CAN1_DATALENGTH : CAN3_DATALENGTH) \
+                                                 : ((CAN2_DATALENGTH > CAN3_DATALENGTH) ? CAN2_DATALENGTH : CAN3_DATALENGTH))
+
 /**
  * @brief Structure to represent a CAN network message.
  * \param Bus : ID of the CAN bus the message is associated with.
- * \param is_extended_id : rue if using an extended ID, false if using a standard ID.
+ * \param is_extended_id : True if using an extended ID, false if using a standard ID.
  * \param arbitration_id : The identifier for the message, either standard or extended based on is_extended_id.
- * \param dlc : the Data Length Field
- * \param data[8] : the Data array
+ * \param dlc : the Data Length in bytes (1-64)
+ * \param data : the Data array, sized to the largest configured bus DLC
  * \return uint32_t Value
  */
 typedef struct
@@ -77,8 +81,8 @@ typedef struct
     uint8_t Bus;             /**< ID of the CAN bus the message is associated with. */
     bool is_extended_id;     /**< True if using an extended ID, false if using a standard ID. */
     uint32_t arbitration_id; /**< The identifier for the message, either standard or extended based on is_extended_id. */
-    uint8_t dlc;             /**< Data length code, the number of valid bytes in the data field. */
-    uint8_t data[8];         /**< Data payload of the CAN message. */
+    uint8_t dlc;             /**< Data length in bytes, the number of valid bytes in the data field. */
+    uint8_t data[CAN_MSG_MAX_DLC]; /**< Data payload of the CAN message. */
 } CAN_Message;
 
 typedef enum
@@ -101,7 +105,7 @@ extern uint8_t uart_array;
 
 // CAN Physical Layer Function Prototypes //
 uint8_t setupCANbus(CAN_Bus bus, uint32_t mainBitrate, CAN_Mode mode);
-// uint8_t setCANFDBitrate(CAN_Bus bus, uint32_t mainBitrate, uint32_t dataBitrate, bool bitrateSwitch);
+uint8_t setupCAN_FDbus(CAN_Bus bus, uint32_t mainBitrate, uint32_t dataBitrate, bool bitrateSwitch, CAN_Mode mode);
 uint8_t startCANbus(CAN_Bus bus);
 uint8_t stopCANbus(CAN_Bus bus);
 uint8_t resetCAN(CAN_Bus bus);
@@ -109,12 +113,12 @@ uint8_t setCAN_Termination(CAN_Bus bus, bool activated);
 CAN_ErrorCounts getCANErrorCounts(CAN_Bus bus);
 
 // CAN Communication Layer Fuction Prototypes //
-uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t data[8]);
+uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t data[CAN_MSG_MAX_DLC]);
 void onReceive(CAN_Message);
 
 void trigger_CAN_RX(void);
 void trigger_CAN_TX(void);
-uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, uint8_t rxData[8]);
+uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, uint8_t rxData[CAN_MSG_MAX_DLC]);
 
 // Arithmatic Functions related to CAN Reception and Transmission //
 double dbc_decode(const uint8_t *data, datatype_t datatype, bool is_big_endian, uint8_t dbc_start_bit, uint8_t dbc_bit_length, float factor, float offset, uint8_t decimal_places);

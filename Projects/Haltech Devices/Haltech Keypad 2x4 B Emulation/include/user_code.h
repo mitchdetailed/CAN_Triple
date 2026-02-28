@@ -10,8 +10,24 @@
 /* Defines Declarations */
 #ifndef INC_USER_CODE_H_
 #define INC_USER_CODE_H_
+
+
+
+#define CAN1_RX_MSG_BUFFER_SIZE 32     /* < Must Be incremented by a factor of 2. eg.(4,8,16,32,64,..,256) */
+#define CAN1_TX_MSG_BUFFER_SIZE 32     /* < Must Be incremented by a factor of 2. eg.(4,8,16,32,64,..,256) */
+#define CAN1_DATALENGTH         64       /* Data Length Max Size for Circular Buffer*/
+
+#define CAN2_RX_MSG_BUFFER_SIZE 32      /* < Must Be incremented by a factor of 2. eg.(4,8,16,32,64,..,256) */
+#define CAN2_TX_MSG_BUFFER_SIZE 32      /* < Must Be incremented by a factor of 2. eg.(4,8,16,32,64,..,256) */
+#define CAN2_DATALENGTH         64       /* Data Length Max Size for Circular Buffer*/
+
+#define CAN3_RX_MSG_BUFFER_SIZE 32      /* < Must Be incremented by a factor of 2. eg.(4,8,16,32,64,..,256) */
+#define CAN3_TX_MSG_BUFFER_SIZE 32      /* < Must Be incremented by a factor of 2. eg.(4,8,16,32,64,..,256) */
+#define CAN3_DATALENGTH        8       /* Data Length Max Size for Circular Buffer*/
+
+#define CANFD_LOOP_DELAY_NS     100     /* Assumed transceiver+path loop delay in ns */
+
 #define UART_MSG_BUFFER_SIZE 1024 /* UART String Buffer Size*/
-#define CAN_MSG_BUFFER_SIZE 256   /* < Must Be incremented by a factor of 2. eg.(4,8,16,32,64,..,256) */
 // #define UART_DEBUG_BAUDRATE       115200      /* Default UART Debug Baudrate*/
 // #define UART_DEBUG_BAUDRATE       921600      /* Teleplot Max UART Debug Baudrate?*/
 #define UART_DEBUG_BAUDRATE 7372800 /* Maximum UART Debug Baudrate*/

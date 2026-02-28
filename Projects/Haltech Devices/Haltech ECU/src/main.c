@@ -22,7 +22,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdbool.h>
-#include <stdio.h>
+//#include <stdio.h>
 #include <string.h>
 #include "user_code.h"
 #include "backend_functions.h"
@@ -230,6 +230,9 @@ int main(void)
         // Restart UART receive interrupt if needed
         __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
         HAL_UARTEx_ReceiveToIdle_DMA(&huart1, rxBuffer, sizeof(rxBuffer));
+        
+        // Retry UART comms
+        uart_abort = false;
       }
     }
     if (uart_abort == false)
