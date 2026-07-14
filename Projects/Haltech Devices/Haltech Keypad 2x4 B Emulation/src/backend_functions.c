@@ -122,6 +122,44 @@ uint16_t can1Reset_counter = 0; // Define the variable
 uint16_t can2Reset_counter = 0; // Define the variable
 uint16_t can3Reset_counter = 0; // Define the variable
 
+/* Per-bus CAN health/error tracking. Index 0 = CAN_1, 1 = CAN_2, 2 = CAN_3.
+ * Written from CAN error interrupt callbacks, read from the main loop, hence volatile. */
+static volatile CAN_ErrorStatus can_health[3];
+static volatile bool can_reset_pending[3];  /* bus-off recovery requested from ISR */
+static volatile bool can_notify_pending[3]; /* onCANError() callback requested from ISR */
+
+/* Map a single CAN_Bus flag to a 0..2 index, or -1 for an invalid/multi-bus value. */
+static inline int can_bus_index(CAN_Bus bus)
+{
+	switch (bus)
+	{
+	case CAN_1: return 0;
+	case CAN_2: return 1;
+	case CAN_3: return 2;
+	default:    return -1;
+	}
+}
+
+/* Map a 0..2 index back to its CAN_Bus flag. */
+static inline CAN_Bus can_bus_from_index(int idx)
+{
+	return (idx == 0) ? CAN_1 : (idx == 1) ? CAN_2 : CAN_3;
+}
+
+/* Return the HAL handle for a 0..2 bus index. */
+static inline FDCAN_HandleTypeDef *can_handle_from_index(int idx)
+{
+	return (idx == 0) ? &hfdcan1 : (idx == 1) ? &hfdcan2 : &hfdcan3;
+}
+
+/* Return the 0..2 index for a HAL handle (used inside the interrupt callbacks). */
+static inline int can_handle_index(FDCAN_HandleTypeDef *hfdcan)
+{
+	if (hfdcan->Instance == FDCAN1) return 0;
+	if (hfdcan->Instance == FDCAN2) return 1;
+	return 2;
+}
+
 /**
  * \brief Converts a HAL FDCAN DataLength code to actual byte count.
  * The HAL uses encoded values for FD frames: 9->12, 10->16, 11->20, 12->24, 13->32, 14->48, 15->64.
@@ -586,8 +624,11 @@ uint8_t startCANbus(CAN_Bus bus)
 		}
 		if (HAL_FDCAN_ActivateNotification(&hfdcan1,
 										   FDCAN_IT_RX_FIFO0_NEW_MESSAGE |
+											   FDCAN_IT_RX_FIFO0_MESSAGE_LOST |
 											   FDCAN_IT_ERROR_PASSIVE |
 											   FDCAN_IT_ERROR_LOGGING_OVERFLOW |
+											   FDCAN_IT_DATA_PROTOCOL_ERROR |
+											   FDCAN_IT_ARB_PROTOCOL_ERROR |
 											   FDCAN_IT_BUS_OFF |
 											   FDCAN_IT_ERROR_WARNING |
 											   FDCAN_IT_TX_COMPLETE,
@@ -600,7 +641,7 @@ uint8_t startCANbus(CAN_Bus bus)
 		{
 			groupval += 4;
 		}
-		if (groupval != 7)
+		if (groupval != 0)
 		{
 			returnval = 1;
 		}
@@ -612,7 +653,7 @@ uint8_t startCANbus(CAN_Bus bus)
 		{
 			groupval += 1;
 		}
-		if (HAL_FDCAN_ActivateNotification(&hfdcan2, FDCAN_IT_RX_FIFO0_NEW_MESSAGE | FDCAN_IT_ERROR_PASSIVE | FDCAN_IT_ERROR_LOGGING_OVERFLOW | FDCAN_IT_DATA_PROTOCOL_ERROR | FDCAN_IT_ARB_PROTOCOL_ERROR | FDCAN_IT_BUS_OFF | FDCAN_IT_ERROR_WARNING | FDCAN_IT_TX_COMPLETE, FDCAN_TX_BUFFER0 | FDCAN_TX_BUFFER1 | FDCAN_TX_BUFFER2) != HAL_OK)
+		if (HAL_FDCAN_ActivateNotification(&hfdcan2, FDCAN_IT_RX_FIFO0_NEW_MESSAGE | FDCAN_IT_RX_FIFO0_MESSAGE_LOST | FDCAN_IT_ERROR_PASSIVE | FDCAN_IT_ERROR_LOGGING_OVERFLOW | FDCAN_IT_DATA_PROTOCOL_ERROR | FDCAN_IT_ARB_PROTOCOL_ERROR | FDCAN_IT_BUS_OFF | FDCAN_IT_ERROR_WARNING | FDCAN_IT_TX_COMPLETE, FDCAN_TX_BUFFER0 | FDCAN_TX_BUFFER1 | FDCAN_TX_BUFFER2) != HAL_OK)
 		{
 			groupval += 2;
 		}
@@ -621,7 +662,7 @@ uint8_t startCANbus(CAN_Bus bus)
 		{
 			groupval += 4;
 		}
-		if (groupval != 7)
+		if (groupval != 0)
 		{
 			returnval = 1;
 		}
@@ -633,7 +674,7 @@ uint8_t startCANbus(CAN_Bus bus)
 		{
 			groupval += 1;
 		}
-		if (HAL_FDCAN_ActivateNotification(&hfdcan3, FDCAN_IT_RX_FIFO0_NEW_MESSAGE | FDCAN_IT_ERROR_PASSIVE | FDCAN_IT_ERROR_LOGGING_OVERFLOW | FDCAN_IT_DATA_PROTOCOL_ERROR | FDCAN_IT_ARB_PROTOCOL_ERROR | FDCAN_IT_BUS_OFF | FDCAN_IT_ERROR_WARNING | FDCAN_IT_TX_COMPLETE, FDCAN_TX_BUFFER0 | FDCAN_TX_BUFFER1 | FDCAN_TX_BUFFER2) != HAL_OK)
+		if (HAL_FDCAN_ActivateNotification(&hfdcan3, FDCAN_IT_RX_FIFO0_NEW_MESSAGE | FDCAN_IT_RX_FIFO0_MESSAGE_LOST | FDCAN_IT_ERROR_PASSIVE | FDCAN_IT_ERROR_LOGGING_OVERFLOW | FDCAN_IT_DATA_PROTOCOL_ERROR | FDCAN_IT_ARB_PROTOCOL_ERROR | FDCAN_IT_BUS_OFF | FDCAN_IT_ERROR_WARNING | FDCAN_IT_TX_COMPLETE, FDCAN_TX_BUFFER0 | FDCAN_TX_BUFFER1 | FDCAN_TX_BUFFER2) != HAL_OK)
 		{
 			groupval += 2;
 		}
@@ -642,7 +683,7 @@ uint8_t startCANbus(CAN_Bus bus)
 		{
 			groupval += 4;
 		}
-		if (groupval != 7)
+		if (groupval != 0)
 		{
 			returnval = 1;
 		}
@@ -751,40 +792,81 @@ uint8_t setCAN_Termination(CAN_Bus bus, bool activated)
  */
 CAN_ErrorCounts getCANErrorCounts(CAN_Bus bus)
 {
-	volatile uint32_t *ecr_addr;
 	CAN_ErrorCounts error_counts;
-	switch (bus)
+	int idx = can_bus_index(bus);
+	if (idx < 0)
 	{
-	case CAN_1:
-		ecr_addr = (volatile uint32_t *)0x40006440UL;
-		error_counts.BusResetCounter = can1Reset_counter;
-		error_counts.TxErrorCounter = (uint8_t)(((*ecr_addr) & FDCAN_ECR_TEC) >> FDCAN_ECR_TEC_Pos);
-		error_counts.RxErrorCounter = (uint8_t)(((*ecr_addr) & FDCAN_ECR_REC) >> FDCAN_ECR_REC_Pos);
-		break;
-	case CAN_2:
-		ecr_addr = (volatile uint32_t *)0x40006840UL;
-		error_counts.BusResetCounter = can2Reset_counter;
-		error_counts.TxErrorCounter = (uint8_t)(((*ecr_addr) & FDCAN_ECR_TEC) >> FDCAN_ECR_TEC_Pos);
-		error_counts.RxErrorCounter = (uint8_t)(((*ecr_addr) & FDCAN_ECR_REC) >> FDCAN_ECR_REC_Pos);
-		break;
-	case CAN_3:
-		ecr_addr = (volatile uint32_t *)0x40006C40UL;
-		error_counts.BusResetCounter = can3Reset_counter;
-		error_counts.TxErrorCounter = (uint8_t)(((*ecr_addr) & FDCAN_ECR_TEC) >> FDCAN_ECR_TEC_Pos);
-		error_counts.RxErrorCounter = (uint8_t)(((*ecr_addr) & FDCAN_ECR_REC) >> FDCAN_ECR_REC_Pos);
-		break;
-	default:
-		// Handle invalid bus selection
+		// Invalid or multi-bus selection
 		error_counts.BusResetCounter = 255;
 		error_counts.TxErrorCounter = 255;
 		error_counts.RxErrorCounter = 255;
+		return error_counts;
 	}
+
+	FDCAN_HandleTypeDef *hfdcan = can_handle_from_index(idx);
+	error_counts.TxErrorCounter = (uint8_t)((hfdcan->Instance->ECR & FDCAN_ECR_TEC) >> FDCAN_ECR_TEC_Pos);
+	error_counts.RxErrorCounter = (uint8_t)((hfdcan->Instance->ECR & FDCAN_ECR_REC) >> FDCAN_ECR_REC_Pos);
+
+	/* BusResetCounter is a uint8_t for backward compatibility; saturate rather than wrap.
+	 * The full-width count is available via getCANErrorStatus(). */
+	uint32_t resets = can_health[idx].busResetCount;
+	error_counts.BusResetCounter = (resets > 255U) ? 255U : (uint8_t)resets;
 	return error_counts;
+}
+
+/**
+ * \brief Returns a rich CAN health/error snapshot for a bus: live state, last error
+ *        types, and cumulative event/drop counters.
+ *
+ * \param bus CAN_1, CAN_2, or CAN_3 (a single bus).
+ * \return Fully populated CAN_ErrorStatus. If an invalid/multi-bus value is passed,
+ *         a zeroed struct is returned.
+ */
+CAN_ErrorStatus getCANErrorStatus(CAN_Bus bus)
+{
+	CAN_ErrorStatus status;
+	memset(&status, 0, sizeof(status));
+
+	int idx = can_bus_index(bus);
+	if (idx < 0)
+	{
+		return status;
+	}
+
+	/* Snapshot the ISR-maintained counters atomically. */
+	__disable_irq();
+	memcpy(&status, (const void *)&can_health[idx], sizeof(CAN_ErrorStatus));
+	__enable_irq();
+
+	/* Refresh the live hardware fields from ECR/PSR. */
+	FDCAN_HandleTypeDef *hfdcan = can_handle_from_index(idx);
+	uint32_t psr = hfdcan->Instance->PSR;
+	status.TxErrorCounter = (uint8_t)((hfdcan->Instance->ECR & FDCAN_ECR_TEC) >> FDCAN_ECR_TEC_Pos);
+	status.RxErrorCounter = (uint8_t)((hfdcan->Instance->ECR & FDCAN_ECR_REC) >> FDCAN_ECR_REC_Pos);
+
+	if (psr & FDCAN_PSR_BO)
+		status.state = CAN_ERR_BUSOFF;
+	else if (psr & FDCAN_PSR_EP)
+		status.state = CAN_ERR_PASSIVE;
+	else if (psr & FDCAN_PSR_EW)
+		status.state = CAN_ERR_WARNING;
+	else
+		status.state = CAN_ERR_ACTIVE;
+
+	return status;
 }
 
 /* Interrupt Service Routine for Rx Messages */
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 {
+	int cb_idx = can_handle_index(hfdcan);
+
+	/* Hardware RX FIFO0 overflowed and dropped one or more frames before we read them. */
+	if ((RxFifo0ITs & FDCAN_IT_RX_FIFO0_MESSAGE_LOST) != 0)
+	{
+		can_health[cb_idx].rxFifoLostCount++;
+	}
+
 	if ((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != 0)
 	{
 		/* Retrieve Rx messages from RX FIFO0 */
@@ -792,7 +874,10 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 		{
 			if (HAL_FDCAN_GetRxMessage(&hfdcan1, FDCAN_RX_FIFO0, &CAN1_RxHeader, CAN1_RxData) != HAL_OK)
 			{
-				Error_Handler();
+				/* Read failed — count the lost frame and keep the gateway running
+				 * (do NOT call Error_Handler(), which would hang all three buses). */
+				can_health[0].rxFifoLostCount++;
+				return;
 			}
 
 			bool Callback_Rx_ID_Type;
@@ -813,13 +898,17 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 			{
 				Callback_Rx_DLC = CAN1_DATALENGTH;
 			}
-			add_to_CAN_RX_Queue(CAN_1, Callback_Rx_ID_Type, Callback_Rx_ID, Callback_Rx_DLC, CAN1_RxData);
+			if (add_to_CAN_RX_Queue(CAN_1, Callback_Rx_ID_Type, Callback_Rx_ID, Callback_Rx_DLC, CAN1_RxData) != 0)
+			{
+				can_health[0].rxQueueOverflowCount++;
+			}
 		}
 		if (hfdcan->Instance == FDCAN2)
 		{
 			if (HAL_FDCAN_GetRxMessage(&hfdcan2, FDCAN_RX_FIFO0, &CAN2_RxHeader, CAN2_RxData) != HAL_OK)
 			{
-				Error_Handler();
+				can_health[1].rxFifoLostCount++;
+				return;
 			}
 
 			bool Callback_Rx_ID_Type;
@@ -840,13 +929,17 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 			{
 				Callback_Rx_DLC = CAN2_DATALENGTH;
 			}
-			add_to_CAN_RX_Queue(CAN_2, Callback_Rx_ID_Type, Callback_Rx_ID, Callback_Rx_DLC, CAN2_RxData);
+			if (add_to_CAN_RX_Queue(CAN_2, Callback_Rx_ID_Type, Callback_Rx_ID, Callback_Rx_DLC, CAN2_RxData) != 0)
+			{
+				can_health[1].rxQueueOverflowCount++;
+			}
 		}
 		if (hfdcan->Instance == FDCAN3)
 		{
 			if (HAL_FDCAN_GetRxMessage(&hfdcan3, FDCAN_RX_FIFO0, &CAN3_RxHeader, CAN3_RxData) != HAL_OK)
 			{
-				Error_Handler();
+				can_health[2].rxFifoLostCount++;
+				return;
 			}
 
 			bool Callback_Rx_ID_Type;
@@ -867,7 +960,10 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 			{
 				Callback_Rx_DLC = CAN3_DATALENGTH;
 			}
-			add_to_CAN_RX_Queue(CAN_3, Callback_Rx_ID_Type, Callback_Rx_ID, Callback_Rx_DLC, CAN3_RxData);
+			if (add_to_CAN_RX_Queue(CAN_3, Callback_Rx_ID_Type, Callback_Rx_ID, Callback_Rx_DLC, CAN3_RxData) != 0)
+			{
+				can_health[2].rxQueueOverflowCount++;
+			}
 		}
 	}
 }
@@ -897,10 +993,11 @@ uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, 
 		/*  if there is room */
 		if (can1_Rx_qNextHead != can1_Rx_qTail)
 		{
+			uint8_t dlc_c = (DLC > CAN1_DATALENGTH) ? CAN1_DATALENGTH : DLC;
 			can1_Rx_qData[can1_Rx_qHead].EXT_ID = EXT_ID;
 			can1_Rx_qData[can1_Rx_qHead].arb_id = ID;
-			can1_Rx_qData[can1_Rx_qHead].dlc = DLC;
-			for (uint8_t i = 0; i < DLC; i++)
+			can1_Rx_qData[can1_Rx_qHead].dlc = dlc_c;
+			for (uint8_t i = 0; i < dlc_c; i++)
 			{
 				can1_Rx_qData[can1_Rx_qHead].data[i] = rxData[i];
 			}
@@ -919,10 +1016,11 @@ uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, 
 		/*  if there is room */
 		if (can2_Rx_qNextHead != can2_Rx_qTail)
 		{
+			uint8_t dlc_c = (DLC > CAN2_DATALENGTH) ? CAN2_DATALENGTH : DLC;
 			can2_Rx_qData[can2_Rx_qHead].EXT_ID = EXT_ID;
 			can2_Rx_qData[can2_Rx_qHead].arb_id = ID;
-			can2_Rx_qData[can2_Rx_qHead].dlc = DLC;
-			for (uint8_t i = 0; i < DLC; i++)
+			can2_Rx_qData[can2_Rx_qHead].dlc = dlc_c;
+			for (uint8_t i = 0; i < dlc_c; i++)
 			{
 				can2_Rx_qData[can2_Rx_qHead].data[i] = rxData[i];
 			}
@@ -941,10 +1039,11 @@ uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, 
 		/*  if there is room */
 		if (can3_Rx_qNextHead != can3_Rx_qTail)
 		{
+			uint8_t dlc_c = (DLC > CAN3_DATALENGTH) ? CAN3_DATALENGTH : DLC;
 			can3_Rx_qData[can3_Rx_qHead].EXT_ID = EXT_ID;
 			can3_Rx_qData[can3_Rx_qHead].arb_id = ID;
-			can3_Rx_qData[can3_Rx_qHead].dlc = DLC;
-			for (uint8_t i = 0; i < DLC; i++)
+			can3_Rx_qData[can3_Rx_qHead].dlc = dlc_c;
+			for (uint8_t i = 0; i < dlc_c; i++)
 			{
 				can3_Rx_qData[can3_Rx_qHead].data[i] = rxData[i];
 			}
@@ -978,10 +1077,11 @@ uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, 
 		/*  if there is room */
 		if (can1_Tx_qNextHead != can1_Tx_qTail)
 		{
+			uint8_t dlc_c = (dlc > CAN1_DATALENGTH) ? CAN1_DATALENGTH : dlc;
 			can1_Tx_qData[can1_Tx_qHead].EXT_ID = is_extended_id;
 			can1_Tx_qData[can1_Tx_qHead].arb_id = arbitration_id;
-			can1_Tx_qData[can1_Tx_qHead].dlc = dlc;
-			for (uint8_t i = 0; i < dlc; i++)
+			can1_Tx_qData[can1_Tx_qHead].dlc = dlc_c;
+			for (uint8_t i = 0; i < dlc_c; i++)
 			{
 				can1_Tx_qData[can1_Tx_qHead].data[i] = data[i];
 			}
@@ -991,6 +1091,7 @@ uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, 
 		else
 		{
 			/* no room left in the buffer */
+			can_health[0].txQueueOverflowCount++;
 			return_val = 1;
 		}
 	}
@@ -1000,10 +1101,11 @@ uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, 
 		/*  if there is room */
 		if (can2_Tx_qNextHead != can2_Tx_qTail)
 		{
+			uint8_t dlc_c = (dlc > CAN2_DATALENGTH) ? CAN2_DATALENGTH : dlc;
 			can2_Tx_qData[can2_Tx_qHead].EXT_ID = is_extended_id;
 			can2_Tx_qData[can2_Tx_qHead].arb_id = arbitration_id;
-			can2_Tx_qData[can2_Tx_qHead].dlc = dlc;
-			for (uint8_t i = 0; i < dlc; i++)
+			can2_Tx_qData[can2_Tx_qHead].dlc = dlc_c;
+			for (uint8_t i = 0; i < dlc_c; i++)
 			{
 				can2_Tx_qData[can2_Tx_qHead].data[i] = data[i];
 			}
@@ -1013,6 +1115,7 @@ uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, 
 		else
 		{
 			/* no room left in the buffer */
+			can_health[1].txQueueOverflowCount++;
 			return_val = 2;
 		}
 	}
@@ -1022,10 +1125,11 @@ uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, 
 		/*  if there is room */
 		if (can3_Tx_qNextHead != can3_Tx_qTail)
 		{
+			uint8_t dlc_c = (dlc > CAN3_DATALENGTH) ? CAN3_DATALENGTH : dlc;
 			can3_Tx_qData[can3_Tx_qHead].EXT_ID = is_extended_id;
 			can3_Tx_qData[can3_Tx_qHead].arb_id = arbitration_id;
-			can3_Tx_qData[can3_Tx_qHead].dlc = dlc;
-			for (uint8_t i = 0; i < dlc; i++)
+			can3_Tx_qData[can3_Tx_qHead].dlc = dlc_c;
+			for (uint8_t i = 0; i < dlc_c; i++)
 			{
 				can3_Tx_qData[can3_Tx_qHead].data[i] = data[i];
 			}
@@ -1035,6 +1139,7 @@ uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, 
 		else
 		{
 			/* no room left in the buffer */
+			can_health[2].txQueueOverflowCount++;
 			return_val = 3;
 		}
 	}
@@ -1117,9 +1222,48 @@ void trigger_CAN_RX()
 	}
 }
 
+/* Weak default so projects that don't define onCANError still link.
+ * Override in user_code.c to react to CAN faults. */
+__attribute__((weak)) void onCANError(CAN_Bus bus, const CAN_ErrorStatus *status)
+{
+	(void)bus;
+	(void)status;
+}
+
+/* Runs in thread (non-ISR) context from trigger_CAN_TX(). Performs any deferred bus-off
+ * recovery flagged by the error ISRs and delivers pending onCANError() notifications, so
+ * the heavy HAL Stop/Start and the user callback never run inside an interrupt. */
+static void service_CAN_faults(void)
+{
+	for (int i = 0; i < 3; i++)
+	{
+		if (can_reset_pending[i])
+		{
+			can_reset_pending[i] = false;
+			CAN_Bus b = can_bus_from_index(i);
+			resetCAN(b);
+			can_health[i].busResetCount++;
+			can_health[i].lastResetTimestamp = getTimestamp();
+			/* Keep the legacy per-bus reset counters in sync. */
+			if (i == 0) can1Reset_counter = (uint16_t)can_health[0].busResetCount;
+			else if (i == 1) can2Reset_counter = (uint16_t)can_health[1].busResetCount;
+			else can3Reset_counter = (uint16_t)can_health[2].busResetCount;
+		}
+		if (can_notify_pending[i])
+		{
+			can_notify_pending[i] = false;
+			CAN_Bus b = can_bus_from_index(i);
+			CAN_ErrorStatus snap = getCANErrorStatus(b);
+			onCANError(b, &snap);
+		}
+	}
+}
+
 /* Callback to Transmit Messages to CANBuses*/
 void trigger_CAN_TX()
 {
+	service_CAN_faults();
+
 	if (HAL_FDCAN_GetState(&hfdcan1) == HAL_FDCAN_STATE_BUSY)
 	{
 		uint8_t can1_freelevel = HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1);
@@ -1150,7 +1294,10 @@ void trigger_CAN_TX()
 			{
 				CAN1_TxData[i] = can1_Tx_qData[can1_Tx_qTail].data[i];
 			}
-			HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &CAN1_TxHeader, CAN1_TxData);
+			if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &CAN1_TxHeader, CAN1_TxData) != HAL_OK)
+			{
+				can_health[0].txFifoFullCount++;
+			}
 			can1_Tx_qTail = (can1_Tx_qTail + 1) & (CAN1_TX_MSG_BUFFER_SIZE - 1);
 			can1_Tx_qElements--;
 			can1_freelevel--;
@@ -1186,7 +1333,10 @@ void trigger_CAN_TX()
 			{
 				CAN2_TxData[i] = can2_Tx_qData[can2_Tx_qTail].data[i];
 			}
-			HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan2, &CAN2_TxHeader, CAN2_TxData);
+			if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan2, &CAN2_TxHeader, CAN2_TxData) != HAL_OK)
+			{
+				can_health[1].txFifoFullCount++;
+			}
 			can2_Tx_qTail = (can2_Tx_qTail + 1) & (CAN2_TX_MSG_BUFFER_SIZE - 1);
 			can2_Tx_qElements--;
 			can2_freelevel--;
@@ -1223,7 +1373,10 @@ void trigger_CAN_TX()
 			{
 				CAN3_TxData[i] = can3_Tx_qData[can3_Tx_qTail].data[i];
 			}
-			HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan3, &CAN3_TxHeader, CAN3_TxData);
+			if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan3, &CAN3_TxHeader, CAN3_TxData) != HAL_OK)
+			{
+				can_health[2].txFifoFullCount++;
+			}
 			can3_Tx_qTail = (can3_Tx_qTail + 1) & (CAN3_TX_MSG_BUFFER_SIZE - 1);
 			can3_Tx_qElements--;
 			can3_freelevel--;
@@ -1231,34 +1384,62 @@ void trigger_CAN_TX()
 	}
 }
 
-/* Callback for Errors occurred on CAN buses */
+/* Callback for bus error-STATE changes (Error-Warning / Error-Passive / Bus-Off).
+ * ISR context: only updates counters/state and flags deferred work — no heavy HAL calls. */
 void HAL_FDCAN_ErrorStatusCallback(FDCAN_HandleTypeDef *hfdcan, uint32_t ErrorStatusITs)
 {
-	uint16_t canTxErrorCount = ((hfdcan->Instance->ECR & FDCAN_ECR_TEC) >> FDCAN_ECR_TEC_Pos);
-	uint16_t canRxErrorCount = ((hfdcan->Instance->ECR & FDCAN_ECR_REC) >> FDCAN_ECR_REC_Pos);
-	if (hfdcan->Instance == FDCAN1)
+	int idx = can_handle_index(hfdcan);
+	uint32_t psr = hfdcan->Instance->PSR;
+
+	/* Record the current bus state from the protocol status register. */
+	if (psr & FDCAN_PSR_BO)
+		can_health[idx].state = CAN_ERR_BUSOFF;
+	else if (psr & FDCAN_PSR_EP)
+		can_health[idx].state = CAN_ERR_PASSIVE;
+	else if (psr & FDCAN_PSR_EW)
+		can_health[idx].state = CAN_ERR_WARNING;
+	else
+		can_health[idx].state = CAN_ERR_ACTIVE;
+
+	/* Count each error-status event as it is signalled. */
+	if (ErrorStatusITs & FDCAN_IT_ERROR_WARNING)
+		can_health[idx].warningCount++;
+	if (ErrorStatusITs & FDCAN_IT_ERROR_PASSIVE)
+		can_health[idx].passiveCount++;
+	if (ErrorStatusITs & FDCAN_IT_BUS_OFF)
 	{
-		if (canTxErrorCount > 240 || canRxErrorCount > 120)
-		{
-			can1Reset_counter++;
-			resetCAN(CAN_1);
-		}
+		can_health[idx].busOffCount++;
+		/* Defer the heavy Stop/Start recovery to thread context (service_CAN_faults). */
+		can_reset_pending[idx] = true;
 	}
-	if (hfdcan->Instance == FDCAN2)
+
+	can_notify_pending[idx] = true;
+}
+
+/* Callback for protocol errors — classifies the error TYPE from the Last Error Code.
+ * Requires FDCAN_IT_ARB_PROTOCOL_ERROR / FDCAN_IT_DATA_PROTOCOL_ERROR to be enabled. */
+void HAL_FDCAN_ErrorCallback(FDCAN_HandleTypeDef *hfdcan)
+{
+	int idx = can_handle_index(hfdcan);
+	uint32_t psr = hfdcan->Instance->PSR; /* single read; also re-arms the "no change" (7) state */
+
+	uint8_t lec  = (uint8_t)((psr & FDCAN_PSR_LEC) >> FDCAN_PSR_LEC_Pos);
+	uint8_t dlec = (uint8_t)((psr & FDCAN_PSR_DLEC) >> FDCAN_PSR_DLEC_Pos);
+
+	/* LEC/DLEC: 0 = no error, 7 = no change since last read; 1..6 are real error types. */
+	if (lec >= CAN_LEC_STUFF && lec <= CAN_LEC_CRC)
 	{
-		if (canTxErrorCount > 240 || canRxErrorCount > 120)
-		{
-			can2Reset_counter++;
-			resetCAN(CAN_2);
-		}
+		can_health[idx].lastArbLEC = (CAN_LastErrorCode)lec;
+		can_health[idx].lecCount[lec]++;
+		can_health[idx].protocolErrCount++;
+		can_notify_pending[idx] = true;
 	}
-	if (hfdcan->Instance == FDCAN3)
+	if (dlec >= CAN_LEC_STUFF && dlec <= CAN_LEC_CRC)
 	{
-		if (canTxErrorCount > 240 || canRxErrorCount > 120)
-		{
-			can3Reset_counter++;
-			resetCAN(CAN_3);
-		}
+		can_health[idx].lastDataLEC = (CAN_LastErrorCode)dlec;
+		can_health[idx].dlecCount[dlec]++;
+		can_health[idx].protocolErrCount++;
+		can_notify_pending[idx] = true;
 	}
 }
 

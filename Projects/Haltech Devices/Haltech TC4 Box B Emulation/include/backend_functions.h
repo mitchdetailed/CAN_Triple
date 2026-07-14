@@ -40,6 +40,64 @@ typedef struct
     uint8_t BusResetCounter;
 } CAN_ErrorCounts;
 
+/**
+ * @brief Overall protocol state of a CAN bus (from the FDCAN PSR register).
+ */
+typedef enum
+{
+    CAN_ERR_ACTIVE  = 0, /**< Normal operation.                       */
+    CAN_ERR_WARNING = 1, /**< Error-warning: an error counter >= 96.  */
+    CAN_ERR_PASSIVE = 2, /**< Error-passive: an error counter >= 128. */
+    CAN_ERR_BUSOFF  = 3  /**< Bus-off: TEC >= 256, bus disconnected.  */
+} CAN_ErrorState;
+
+/**
+ * @brief Last protocol error type. Values match the FDCAN PSR.LEC / PSR.DLEC field encoding.
+ */
+typedef enum
+{
+    CAN_LEC_NONE      = 0, /**< No error since the last check.        */
+    CAN_LEC_STUFF     = 1, /**< Bit-stuffing error.                   */
+    CAN_LEC_FORM      = 2, /**< Form (fixed-format) error.            */
+    CAN_LEC_ACK       = 3, /**< Acknowledge error (no receiver ACK).  */
+    CAN_LEC_BIT1      = 4, /**< Sent recessive but monitored dominant.*/
+    CAN_LEC_BIT0      = 5, /**< Sent dominant but monitored recessive.*/
+    CAN_LEC_CRC       = 6, /**< CRC error.                            */
+    CAN_LEC_NO_CHANGE = 7  /**< No bus event since PSR was last read. */
+} CAN_LastErrorCode;
+
+/**
+ * @brief Rich CAN health/error snapshot for a single bus.
+ *
+ * Live fields (TxErrorCounter/RxErrorCounter/state/lastArb/DataLEC) are read from
+ * hardware at call time; the cumulative counters are maintained by the CAN error
+ * interrupt callbacks. Retrieve with getCANErrorStatus(bus).
+ */
+typedef struct
+{
+    uint8_t           TxErrorCounter;   /**< Live transmit error counter (ECR.TEC). */
+    uint8_t           RxErrorCounter;   /**< Live receive error counter (ECR.REC).  */
+    CAN_ErrorState    state;            /**< Live bus state (PSR BO/EP/EW).          */
+    CAN_LastErrorCode lastArbLEC;       /**< Last arbitration-phase error type.      */
+    CAN_LastErrorCode lastDataLEC;      /**< Last FD data-phase error type.          */
+
+    uint32_t busOffCount;               /**< Number of bus-off events.               */
+    uint32_t warningCount;              /**< Number of error-warning events.         */
+    uint32_t passiveCount;              /**< Number of error-passive events.         */
+    uint32_t protocolErrCount;          /**< Number of arb/data protocol errors.     */
+
+    uint32_t rxFifoLostCount;           /**< Hardware RX FIFO0 dropped frames.       */
+    uint32_t rxQueueOverflowCount;      /**< Software RX ring-buffer dropped frames. */
+    uint32_t txQueueOverflowCount;      /**< Software TX ring-buffer dropped frames. */
+    uint32_t txFifoFullCount;           /**< HAL TX FIFO add failures.               */
+
+    uint32_t busResetCount;             /**< Automatic bus resets performed.         */
+    float    lastResetTimestamp;        /**< getTimestamp() at the last reset.       */
+
+    uint16_t lecCount[8];               /**< Arbitration-phase errors by CAN_LastErrorCode (1..6). */
+    uint16_t dlecCount[8];              /**< FD data-phase errors by CAN_LastErrorCode (1..6).     */
+} CAN_ErrorStatus;
+
 // Define datatype_t enum
 typedef enum
 {
@@ -111,10 +169,19 @@ uint8_t stopCANbus(CAN_Bus bus);
 uint8_t resetCAN(CAN_Bus bus);
 uint8_t setCAN_Termination(CAN_Bus bus, bool activated);
 CAN_ErrorCounts getCANErrorCounts(CAN_Bus bus);
+CAN_ErrorStatus getCANErrorStatus(CAN_Bus bus);
 
 // CAN Communication Layer Fuction Prototypes //
 uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t data[CAN_MSG_MAX_DLC]);
 void onReceive(CAN_Message);
+
+/**
+ * @brief Optional user hook, called (from the main loop) when a CAN fault is detected.
+ * The backend provides a weak no-op default; override it in user_code.c to react.
+ * @param bus The bus the fault occurred on.
+ * @param status Snapshot of that bus's error status at the time of the fault.
+ */
+void onCANError(CAN_Bus bus, const CAN_ErrorStatus *status);
 
 void trigger_CAN_RX(void);
 void trigger_CAN_TX(void);
