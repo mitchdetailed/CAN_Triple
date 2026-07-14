@@ -105,14 +105,64 @@ void events_2Hz()
 {
 }
 
+/* Helper: human-readable names for the CAN bus state and last-error-code. */
+static const char *can_state_name(CAN_ErrorState s)
+{
+	switch (s)
+	{
+	case CAN_ERR_ACTIVE:  return "ACTIVE";
+	case CAN_ERR_WARNING: return "WARNING";
+	case CAN_ERR_PASSIVE: return "PASSIVE";
+	case CAN_ERR_BUSOFF:  return "BUS-OFF";
+	default:              return "?";
+	}
+}
+
+static const char *can_lec_name(CAN_LastErrorCode l)
+{
+	switch (l)
+	{
+	case CAN_LEC_NONE:      return "none";
+	case CAN_LEC_STUFF:     return "stuff";
+	case CAN_LEC_FORM:      return "form";
+	case CAN_LEC_ACK:       return "ack";
+	case CAN_LEC_BIT1:      return "bit1";
+	case CAN_LEC_BIT0:      return "bit0";
+	case CAN_LEC_CRC:       return "crc";
+	default:                return "nochg";
+	}
+}
+
+/* Optional hook: fires (from the main loop) the moment a CAN fault is detected. */
+void onCANError(CAN_Bus bus, const CAN_ErrorStatus *status)
+{
+	printf("!! CAN%u fault: state=%s lastErr=%s busOff=%lu passive=%lu\r\n",
+		   (bus == CAN_1) ? 1u : (bus == CAN_2) ? 2u : 3u,
+		   can_state_name(status->state),
+		   can_lec_name(status->lastArbLEC),
+		   (unsigned long)status->busOffCount,
+		   (unsigned long)status->passiveCount);
+}
+
 /* Run 1Hz Functions here */
 void events_1Hz()
 {
-		uint8_t test123[16] = {1,2,3,4,5,6,7,8,5,5,5,5,5,5,5,5};
+	uint8_t test123[16] = {1,2,3,4,5,6,7,8,5,5,5,5,5,5,5,5};
 	send_message(CAN_2,true,0x12345678,16,test123);
 	send_message(CAN_2,true,0x10504030,16,test123);
 
+	/* Legacy accessor still works unchanged. */
 	CAN_ErrorCounts errors = getCANErrorCounts(CAN_2);
-	printf("CAN2 Errors - TX: %u, RX: %u, Resets: %u\r\n", errors.TxErrorCounter, errors.RxErrorCounter, errors.BusResetCounter);
-	
+	printf("CAN2 Errors - TX: %u, RX: %u, Resets: %u\r\n",
+		   errors.TxErrorCounter, errors.RxErrorCounter, errors.BusResetCounter);
+
+	/* Rich health snapshot: state, last error type, and dropped-frame counters. */
+	CAN_ErrorStatus st = getCANErrorStatus(CAN_2);
+	printf("CAN2 Health - state=%s lastArb=%s lastData=%s | busOff=%lu warn=%lu passive=%lu proto=%lu\r\n",
+		   can_state_name(st.state), can_lec_name(st.lastArbLEC), can_lec_name(st.lastDataLEC),
+		   (unsigned long)st.busOffCount, (unsigned long)st.warningCount,
+		   (unsigned long)st.passiveCount, (unsigned long)st.protocolErrCount);
+	printf("CAN2 Drops - rxFifoLost=%lu rxQ=%lu txQ=%lu txFifo=%lu\r\n",
+		   (unsigned long)st.rxFifoLostCount, (unsigned long)st.rxQueueOverflowCount,
+		   (unsigned long)st.txQueueOverflowCount, (unsigned long)st.txFifoFullCount);
 }
