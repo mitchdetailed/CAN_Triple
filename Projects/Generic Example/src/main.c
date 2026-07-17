@@ -54,26 +54,27 @@ TIM_HandleTypeDef htim8;
 UART_HandleTypeDef huart1;
 DMA_HandleTypeDef hdma_usart1_tx;
 DMA_HandleTypeDef hdma_usart1_rx;
-bool uart_abort = false;
+volatile bool uart_abort = false; /* set from the UART error ISR, read in the main loop */
 
 /* USER CODE BEGIN PV */
+/* Written from the TIM8 ISR, read/cleared in the main loop — hence volatile. */
 uint32_t timercounter_d2000 = 0;
-uint8_t x2000Hz_trigger = 0;
-uint8_t x1000Hz_trigger = 0;
-uint8_t x500Hz_trigger = 0;
-uint8_t x200Hz_trigger = 0;
-uint8_t x100Hz_trigger = 0;
-uint8_t x50Hz_trigger = 0;
-uint8_t x20Hz_trigger = 0;
-uint8_t x10Hz_trigger = 0;
-uint8_t x5Hz_trigger = 0;
-uint8_t x2Hz_trigger = 0;
-uint8_t x1Hz_trigger = 0;
-uint32_t timestamp = 0;
+volatile uint8_t x2000Hz_trigger = 0;
+volatile uint8_t x1000Hz_trigger = 0;
+volatile uint8_t x500Hz_trigger = 0;
+volatile uint8_t x200Hz_trigger = 0;
+volatile uint8_t x100Hz_trigger = 0;
+volatile uint8_t x50Hz_trigger = 0;
+volatile uint8_t x20Hz_trigger = 0;
+volatile uint8_t x10Hz_trigger = 0;
+volatile uint8_t x5Hz_trigger = 0;
+volatile uint8_t x2Hz_trigger = 0;
+volatile uint8_t x1Hz_trigger = 0;
+volatile uint32_t timestamp = 0;
 
 uint8_t rxBuffer[256];
-uint8_t processData = 0; // Flag to indicate data processing
-uint8_t dataBuffer[256];
+uint8_t processData = 0;     // Flag to indicate data processing
+uint8_t dataBuffer[256 + 1]; // +1 so a full rxBuffer still has room for the null terminator
 volatile uint16_t dataSize = 0;
 volatile uint8_t dataReady = 0;
 /* USER CODE END PV */
@@ -224,15 +225,22 @@ int main(void)
       events_1Hz();
       if (uart_abort == true)
       {
+        // Clear the serial TX double-buffer state: an aborted DMA transfer
+        // never fires the TX-complete callback, which would otherwise leave
+        // uart_sending latched true and silence serial output permanently.
+        reset_Serial_Comms();
 
-        HAL_UART_Init(&huart1);
-
-        // Restart UART receive interrupt if needed
-        __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
-        HAL_UARTEx_ReceiveToIdle_DMA(&huart1, rxBuffer, sizeof(rxBuffer));
-        
-        // Retry UART comms
-        uart_abort = false;
+        if (HAL_UART_Init(&huart1) == HAL_OK)
+        {
+          // Restart UART receive interrupt if needed
+          __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
+          if (HAL_UARTEx_ReceiveToIdle_DMA(&huart1, rxBuffer, sizeof(rxBuffer)) == HAL_OK)
+          {
+            // Retry UART comms
+            uart_abort = false;
+          }
+        }
+        // On any failure uart_abort stays true and recovery retries in 1 second.
       }
     }
     if (uart_abort == false)
@@ -691,25 +699,27 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
   if (huart->Instance == USART1)
   {
     // Ensure Size does not exceed the buffer
-    if (Size <= 256)
+    if (Size <= sizeof(rxBuffer))
     {
       // Copy data from rxBuffer to dataBuffer
       memcpy(dataBuffer, rxBuffer, Size);
 
-      // Append null terminator to dataBuffer
+      // Append null terminator to dataBuffer (dataBuffer is sized rxBuffer+1)
       dataBuffer[Size] = '\0';
 
       // Set the dataReady flag
       dataReady = 1;
 
       // Clear the rxBuffer after processing the data
-      memset(rxBuffer, 0, 256);
+      memset(rxBuffer, 0, sizeof(rxBuffer));
 
       // Restart DMA reception
       __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
       if (HAL_UARTEx_ReceiveToIdle_DMA(&huart1, rxBuffer, sizeof(rxBuffer)) != HAL_OK)
       {
-        // Handle error
+        // Reception is dead — flag it so the 1 Hz recovery path re-initializes
+        // the UART instead of silently never receiving again.
+        uart_abort = true;
       }
     }
   }
@@ -766,13 +776,14 @@ void HAL_UART_ErrorCallback(UART_HandleTypeDef *huart)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
+  /* A permanent hang with interrupts disabled would leave the device dead
+   * until a power cycle. Match the fault handlers in stm32g4xx_it.c instead:
+   * pause briefly (so an attached debugger can halt here), then reset. */
   __disable_irq();
-  // Reset the system
-  // NVIC_SystemReset();
-  while (1)
+  for (volatile uint32_t i = 0; i < 20000000U; i++)
   {
   }
+  NVIC_SystemReset();
   /* USER CODE END Error_Handler_Debug */
 }
 

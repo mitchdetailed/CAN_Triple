@@ -13,17 +13,22 @@
 
 
 
-#define CAN1_RX_MSG_BUFFER_SIZE 32     /* < Must Be incremented by a factor of 2. eg.(4,8,16,32,64,..,256) */
-#define CAN1_TX_MSG_BUFFER_SIZE 32     /* < Must Be incremented by a factor of 2. eg.(4,8,16,32,64,..,256) */
-#define CAN1_DATALENGTH         64       /* Data Length Max Size for Circular Buffer*/
+/* Message queues are circular byte buffers holding variable-length records
+ * (6-byte header + actual payload), so short frames pack tightly.
+ * CANx_.._MSG_BUFFER_SIZE = number of maximum-size (CANx_DATALENGTH) messages
+ * guaranteed to fit; any value >= 1 is allowed (no power-of-two requirement).
+ * Smaller frames consume less space, so many more of them fit. */
+#define CAN1_RX_MSG_BUFFER_SIZE 32     /* < Guaranteed max-size message capacity of the RX queue */
+#define CAN1_TX_MSG_BUFFER_SIZE 32     /* < Guaranteed max-size message capacity of the TX queue */
+#define CAN1_DATALENGTH         64     /* Max data length (bytes, 1..64) queued per message */
 
-#define CAN2_RX_MSG_BUFFER_SIZE 32      /* < Must Be incremented by a factor of 2. eg.(4,8,16,32,64,..,256) */
-#define CAN2_TX_MSG_BUFFER_SIZE 32      /* < Must Be incremented by a factor of 2. eg.(4,8,16,32,64,..,256) */
-#define CAN2_DATALENGTH         64       /* Data Length Max Size for Circular Buffer*/
+#define CAN2_RX_MSG_BUFFER_SIZE 32      /* < Guaranteed max-size message capacity of the RX queue */
+#define CAN2_TX_MSG_BUFFER_SIZE 32      /* < Guaranteed max-size message capacity of the TX queue */
+#define CAN2_DATALENGTH         64     /* Max data length (bytes, 1..64) queued per message */
 
-#define CAN3_RX_MSG_BUFFER_SIZE 32      /* < Must Be incremented by a factor of 2. eg.(4,8,16,32,64,..,256) */
-#define CAN3_TX_MSG_BUFFER_SIZE 32      /* < Must Be incremented by a factor of 2. eg.(4,8,16,32,64,..,256) */
-#define CAN3_DATALENGTH        8       /* Data Length Max Size for Circular Buffer*/
+#define CAN3_RX_MSG_BUFFER_SIZE 32      /* < Guaranteed max-size message capacity of the RX queue */
+#define CAN3_TX_MSG_BUFFER_SIZE 32      /* < Guaranteed max-size message capacity of the TX queue */
+#define CAN3_DATALENGTH        8       /* Max data length (bytes, 1..64) queued per message */
 
 #define CANFD_LOOP_DELAY_NS     100     /* Assumed transceiver+path loop delay in ns */
 

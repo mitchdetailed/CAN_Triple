@@ -1,0 +1,5 @@
+C:/Users/mitch/Desktop/development-of-cantriple-main/development-of-cantriple/tools/DbcCodegenGui/build/CMakeFiles/DbcCodegenGui.dir
+C:/Users/mitch/Desktop/development-of-cantriple-main/development-of-cantriple/tools/DbcCodegenGui/build/CMakeFiles/edit_cache.dir
+C:/Users/mitch/Desktop/development-of-cantriple-main/development-of-cantriple/tools/DbcCodegenGui/build/CMakeFiles/rebuild_cache.dir
+C:/Users/mitch/Desktop/development-of-cantriple-main/development-of-cantriple/tools/DbcCodegenGui/build/CMakeFiles/DbcCodegenGui_autogen_timestamp_deps.dir
+C:/Users/mitch/Desktop/development-of-cantriple-main/development-of-cantriple/tools/DbcCodegenGui/build/CMakeFiles/DbcCodegenGui_autogen.dir

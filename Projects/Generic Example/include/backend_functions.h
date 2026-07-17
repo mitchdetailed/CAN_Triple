@@ -14,7 +14,7 @@
 #ifndef INC_BACKEND_FUNCTIONS_H_
 #define INC_BACKEND_FUNCTIONS_H_
 
-extern uint32_t timestamp;
+extern volatile uint32_t timestamp;
 /* Variable Declarations */
 
 extern uint16_t can1Reset_counter;
@@ -242,6 +242,7 @@ float lowpass_filter_by_timedelta(float basevalue, float newvalue,  float time_c
 void serialPrint(const char *str);
 void serialWrite(const uint8_t *data, uint16_t length);
 void tx_Serial_Comms();
+void reset_Serial_Comms(void);
 void onSerialReceive(uint8_t *serialMessage);
 
 char *format_CAN_message(const CAN_Message *msg, char *buffer, size_t buf_size);

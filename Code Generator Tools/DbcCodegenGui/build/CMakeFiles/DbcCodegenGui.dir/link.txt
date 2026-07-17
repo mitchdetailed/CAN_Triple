@@ -1,0 +1,3 @@
+"C:\Program Files\CMake\bin\cmake.exe" -E rm -f CMakeFiles\DbcCodegenGui.dir/objects.a
+C:\Qt\Tools\mingw1120_64\bin\ar.exe qc CMakeFiles\DbcCodegenGui.dir/objects.a @CMakeFiles\DbcCodegenGui.dir\objects1.rsp
+C:\Qt\Tools\mingw1120_64\bin\c++.exe -O3 -DNDEBUG -mwindows -Wl,--whole-archive CMakeFiles\DbcCodegenGui.dir/objects.a -Wl,--no-whole-archive -o DbcCodegenGui.exe -Wl,--out-implib,libDbcCodegenGui.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\DbcCodegenGui.dir\linkLibs.rsp

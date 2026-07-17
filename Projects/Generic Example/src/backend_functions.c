@@ -15,108 +15,88 @@
 #include "main.h"
 #include "stm32g4xx_hal.h"
 
-struct q_CAN1_Msg
+/* -------------------------------------------------------------------------
+ * Circular CAN message queues
+ *
+ * Each bus has one RX and one TX queue implemented as a circular byte buffer
+ * holding variable-length records, so a classic 8-byte frame only consumes
+ * 14 bytes of queue space while a 64-byte CAN FD frame consumes 70 bytes.
+ * Record layout:
+ *   [0]    flags   bit0 = extended ID
+ *   [1]    dlc     payload length in bytes (0..64)
+ *   [2..5] arb id  little-endian
+ *   [6..]  payload dlc bytes
+ *
+ * Concurrency model: producers (canq_push) may run in ISR or thread context
+ * and are serialised with a short PRIMASK critical section.  Each queue has
+ * exactly ONE consumer (trigger_CAN_RX / trigger_CAN_TX in the main loop);
+ * producers only advance .head, the consumer only advances .tail, and a
+ * record is published by the final .head store, so pops need no interrupt
+ * lock and interrupts are never disabled while draining.
+ * ------------------------------------------------------------------------- */
+
+#define CANQ_RECORD_HDR 6U
+
+typedef struct
 {
-	bool EXT_ID;
-	uint32_t arb_id;
-	uint8_t dlc;
-	uint8_t data[CAN1_DATALENGTH];
-};
+	uint8_t *buf;           /* backing storage */
+	uint16_t size;          /* backing storage size in bytes */
+	volatile uint16_t head; /* write index, producer-owned */
+	volatile uint16_t tail; /* read index, consumer-owned */
+} CAN_ByteQueue;
 
-struct q_CAN2_Msg
-{
-	bool EXT_ID;
-	uint32_t arb_id;
-	uint8_t dlc;
-	uint8_t data[CAN2_DATALENGTH];
-};
+/* Ring size guaranteeing room for at least `slots` messages of the bus's
+ * maximum data length (one spare byte separates full from empty). */
+#define CANQ_BYTES(slots, datalength) ((slots) * (CANQ_RECORD_HDR + (datalength)) + 1U)
 
-struct q_CAN3_Msg
-{
-	bool EXT_ID;
-	uint32_t arb_id;
-	uint8_t dlc;
-	uint8_t data[CAN3_DATALENGTH];
-};
+_Static_assert(CAN1_DATALENGTH >= 1 && CAN1_DATALENGTH <= 64, "CAN1_DATALENGTH must be 1..64");
+_Static_assert(CAN2_DATALENGTH >= 1 && CAN2_DATALENGTH <= 64, "CAN2_DATALENGTH must be 1..64");
+_Static_assert(CAN3_DATALENGTH >= 1 && CAN3_DATALENGTH <= 64, "CAN3_DATALENGTH must be 1..64");
+_Static_assert(CANQ_BYTES(CAN1_RX_MSG_BUFFER_SIZE, CAN1_DATALENGTH) <= 0xFFFFU, "CAN1 RX queue exceeds 64KB");
+_Static_assert(CANQ_BYTES(CAN1_TX_MSG_BUFFER_SIZE, CAN1_DATALENGTH) <= 0xFFFFU, "CAN1 TX queue exceeds 64KB");
+_Static_assert(CANQ_BYTES(CAN2_RX_MSG_BUFFER_SIZE, CAN2_DATALENGTH) <= 0xFFFFU, "CAN2 RX queue exceeds 64KB");
+_Static_assert(CANQ_BYTES(CAN2_TX_MSG_BUFFER_SIZE, CAN2_DATALENGTH) <= 0xFFFFU, "CAN2 TX queue exceeds 64KB");
+_Static_assert(CANQ_BYTES(CAN3_RX_MSG_BUFFER_SIZE, CAN3_DATALENGTH) <= 0xFFFFU, "CAN3 RX queue exceeds 64KB");
+_Static_assert(CANQ_BYTES(CAN3_TX_MSG_BUFFER_SIZE, CAN3_DATALENGTH) <= 0xFFFFU, "CAN3 TX queue exceeds 64KB");
 
-// CAN RX Queue
-uint16_t can1_Rx_qHead = 0;
-uint16_t can1_Rx_qTail = 0;
-struct q_CAN1_Msg can1_Rx_qData[CAN1_RX_MSG_BUFFER_SIZE];
-uint16_t can1_Rx_qNextHead = 0;
-uint16_t can1_Rx_qElements = 0;
+static uint8_t can1_Rx_qBuf[CANQ_BYTES(CAN1_RX_MSG_BUFFER_SIZE, CAN1_DATALENGTH)];
+static uint8_t can1_Tx_qBuf[CANQ_BYTES(CAN1_TX_MSG_BUFFER_SIZE, CAN1_DATALENGTH)];
+static uint8_t can2_Rx_qBuf[CANQ_BYTES(CAN2_RX_MSG_BUFFER_SIZE, CAN2_DATALENGTH)];
+static uint8_t can2_Tx_qBuf[CANQ_BYTES(CAN2_TX_MSG_BUFFER_SIZE, CAN2_DATALENGTH)];
+static uint8_t can3_Rx_qBuf[CANQ_BYTES(CAN3_RX_MSG_BUFFER_SIZE, CAN3_DATALENGTH)];
+static uint8_t can3_Tx_qBuf[CANQ_BYTES(CAN3_TX_MSG_BUFFER_SIZE, CAN3_DATALENGTH)];
 
-// CAN 1 TX Queue
-uint16_t can1_Tx_qHead = 0;
-uint16_t can1_Tx_qTail = 0;
-struct q_CAN1_Msg can1_Tx_qData[CAN1_TX_MSG_BUFFER_SIZE];
-uint16_t can1_Tx_qNextHead = 0;
-uint16_t can1_Tx_qElements = 0;
+static CAN_ByteQueue can1_Rx_q = {can1_Rx_qBuf, sizeof(can1_Rx_qBuf), 0, 0};
+static CAN_ByteQueue can1_Tx_q = {can1_Tx_qBuf, sizeof(can1_Tx_qBuf), 0, 0};
+static CAN_ByteQueue can2_Rx_q = {can2_Rx_qBuf, sizeof(can2_Rx_qBuf), 0, 0};
+static CAN_ByteQueue can2_Tx_q = {can2_Tx_qBuf, sizeof(can2_Tx_qBuf), 0, 0};
+static CAN_ByteQueue can3_Rx_q = {can3_Rx_qBuf, sizeof(can3_Rx_qBuf), 0, 0};
+static CAN_ByteQueue can3_Tx_q = {can3_Tx_qBuf, sizeof(can3_Tx_qBuf), 0, 0};
 
-// CAN 2 RX Queue
-uint16_t can2_Rx_qHead = 0;
-uint16_t can2_Rx_qTail = 0;
-struct q_CAN2_Msg can2_Rx_qData[CAN2_RX_MSG_BUFFER_SIZE];
-uint16_t can2_Rx_qNextHead = 0;
-uint16_t can2_Rx_qElements = 0;
-
-// CAN 2 TX Queue
-uint16_t can2_Tx_qHead = 0;
-uint16_t can2_Tx_qTail = 0;
-struct q_CAN2_Msg can2_Tx_qData[CAN2_TX_MSG_BUFFER_SIZE];
-uint16_t can2_Tx_qNextHead = 0;
-uint16_t can2_Tx_qElements = 0;
-
-// CAN 3 RX Queue
-uint16_t can3_Rx_qHead = 0;
-uint16_t can3_Rx_qTail = 0;
-struct q_CAN3_Msg can3_Rx_qData[CAN3_RX_MSG_BUFFER_SIZE];
-uint16_t can3_Rx_qNextHead = 0;
-uint16_t can3_Rx_qElements = 0;
-
-// CAN 3 TX Queue
-uint16_t can3_Tx_qHead = 0;
-uint16_t can3_Tx_qTail = 0;
-struct q_CAN3_Msg can3_Tx_qData[CAN3_TX_MSG_BUFFER_SIZE];
-uint16_t can3_Tx_qNextHead = 0;
-uint16_t can3_Tx_qElements = 0;
-
-bool Can1_RxMsgEXT_ID;
-uint32_t Can1_RxMsgID;
-uint8_t Can1_RxMsgDLC;
-uint8_t Can1_RxMsgData[CAN1_DATALENGTH];
-
-bool Can2_RxMsgEXT_ID;
-uint32_t Can2_RxMsgID;
-uint8_t Can2_RxMsgDLC;
-uint8_t Can2_RxMsgData[CAN2_DATALENGTH];
-
-bool Can3_RxMsgEXT_ID;
-uint32_t Can3_RxMsgID;
-uint8_t Can3_RxMsgDLC;
-uint8_t Can3_RxMsgData[CAN3_DATALENGTH];
-
+/* HAL staging buffers.  Always 64 bytes so HAL_FDCAN_GetRxMessage can never
+ * overrun them, even if a longer FD frame than CANx_DATALENGTH arrives, and
+ * so TX padding to the next valid FD frame length always fits. */
 FDCAN_RxHeaderTypeDef CAN1_RxHeader;
-uint8_t CAN1_RxData[CAN1_DATALENGTH];
+uint8_t CAN1_RxData[64];
 FDCAN_TxHeaderTypeDef CAN1_TxHeader;
-uint8_t CAN1_TxData[CAN1_DATALENGTH];
+uint8_t CAN1_TxData[64];
 
 FDCAN_RxHeaderTypeDef CAN2_RxHeader;
-uint8_t CAN2_RxData[CAN2_DATALENGTH];
+uint8_t CAN2_RxData[64];
 FDCAN_TxHeaderTypeDef CAN2_TxHeader;
-uint8_t CAN2_TxData[CAN2_DATALENGTH];
+uint8_t CAN2_TxData[64];
 
 FDCAN_RxHeaderTypeDef CAN3_RxHeader;
-uint8_t CAN3_RxData[CAN3_DATALENGTH];
+uint8_t CAN3_RxData[64];
 FDCAN_TxHeaderTypeDef CAN3_TxHeader;
-uint8_t CAN3_TxData[CAN3_DATALENGTH];
+uint8_t CAN3_TxData[64];
 
 bool storecompleted = false;
 
 StringArray array0 = {.array = {0}, .length = 0};
 StringArray array1 = {.array = {0}, .length = 0};
 uint8_t uart_array = 0;
-bool uart_sending = false;
+volatile bool uart_sending = false;
 
 uint16_t can1Reset_counter = 0; // Define the variable
 uint16_t can2Reset_counter = 0; // Define the variable
@@ -158,6 +138,112 @@ static inline int can_handle_index(FDCAN_HandleTypeDef *hfdcan)
 	if (hfdcan->Instance == FDCAN1) return 0;
 	if (hfdcan->Instance == FDCAN2) return 1;
 	return 2;
+}
+
+/* Return the RX queue for a 0..2 bus index. */
+static inline CAN_ByteQueue *can_rx_queue_from_index(int idx)
+{
+	return (idx == 0) ? &can1_Rx_q : (idx == 1) ? &can2_Rx_q : &can3_Rx_q;
+}
+
+/* Return the TX queue for a 0..2 bus index. */
+static inline CAN_ByteQueue *can_tx_queue_from_index(int idx)
+{
+	return (idx == 0) ? &can1_Tx_q : (idx == 1) ? &can2_Tx_q : &can3_Tx_q;
+}
+
+/* Return the configured max data length for a 0..2 bus index. */
+static inline uint8_t can_datalength_from_index(int idx)
+{
+	return (idx == 0) ? CAN1_DATALENGTH : (idx == 1) ? CAN2_DATALENGTH : CAN3_DATALENGTH;
+}
+
+/* Advance a queue index by n bytes with wrap-around (n must be < q->size). */
+static inline uint16_t canq_advance(const CAN_ByteQueue *q, uint16_t idx, uint16_t n)
+{
+	idx += n;
+	if (idx >= q->size)
+	{
+		idx -= q->size;
+	}
+	return idx;
+}
+
+/* Number of bytes currently stored in the queue. */
+static inline uint16_t canq_used(const CAN_ByteQueue *q)
+{
+	uint16_t head = q->head;
+	uint16_t tail = q->tail;
+	return (head >= tail) ? (uint16_t)(head - tail) : (uint16_t)(q->size - tail + head);
+}
+
+/**
+ * \brief Pushes one message record into a circular queue.
+ * Safe to call from ISR or thread context (short PRIMASK critical section).
+ * \return 0 on success, 1 if the queue does not have room for the record.
+ */
+static uint8_t canq_push(CAN_ByteQueue *q, bool ext_id, uint32_t id, uint8_t dlc, const uint8_t *data)
+{
+	uint16_t needed = (uint16_t)(CANQ_RECORD_HDR + dlc);
+	uint32_t primask = __get_PRIMASK();
+	__disable_irq();
+	uint16_t free_bytes = (uint16_t)(q->size - 1U - canq_used(q));
+	if (free_bytes < needed)
+	{
+		__set_PRIMASK(primask);
+		return 1; /* no room left in the buffer */
+	}
+	uint16_t h = q->head;
+	q->buf[h] = ext_id ? 1U : 0U;    h = canq_advance(q, h, 1);
+	q->buf[h] = dlc;                 h = canq_advance(q, h, 1);
+	q->buf[h] = (uint8_t)(id);       h = canq_advance(q, h, 1);
+	q->buf[h] = (uint8_t)(id >> 8);  h = canq_advance(q, h, 1);
+	q->buf[h] = (uint8_t)(id >> 16); h = canq_advance(q, h, 1);
+	q->buf[h] = (uint8_t)(id >> 24); h = canq_advance(q, h, 1);
+	for (uint8_t i = 0; i < dlc; i++)
+	{
+		q->buf[h] = data[i];
+		h = canq_advance(q, h, 1);
+	}
+	q->head = h; /* publish the complete record */
+	__set_PRIMASK(primask);
+	return 0;
+}
+
+/**
+ * \brief Pops one message record into msg (msg->Bus is left untouched).
+ * Must only be called from the queue's single consumer (the main loop);
+ * producers cannot overwrite a record until .tail is advanced past it.
+ * \return Number of queue bytes consumed, or 0 if the queue is empty.
+ */
+static uint16_t canq_pop(CAN_ByteQueue *q, CAN_Message *msg)
+{
+	if (canq_used(q) < CANQ_RECORD_HDR)
+	{
+		return 0;
+	}
+	uint16_t t = q->tail;
+	uint8_t flags = q->buf[t];               t = canq_advance(q, t, 1);
+	uint8_t dlc = q->buf[t];                 t = canq_advance(q, t, 1);
+	uint32_t id;
+	id  = (uint32_t)q->buf[t];               t = canq_advance(q, t, 1);
+	id |= (uint32_t)q->buf[t] << 8;          t = canq_advance(q, t, 1);
+	id |= (uint32_t)q->buf[t] << 16;         t = canq_advance(q, t, 1);
+	id |= (uint32_t)q->buf[t] << 24;         t = canq_advance(q, t, 1);
+	msg->is_extended_id = (flags & 1U) != 0U;
+	msg->arbitration_id = id;
+	msg->dlc = (dlc <= CAN_MSG_MAX_DLC) ? dlc : CAN_MSG_MAX_DLC;
+	for (uint8_t i = 0; i < msg->dlc; i++)
+	{
+		msg->data[i] = q->buf[t];
+		t = canq_advance(q, t, 1);
+	}
+	if (dlc > msg->dlc) /* defensive: skip bytes beyond the destination capacity */
+	{
+		t = canq_advance(q, t, (uint16_t)(dlc - msg->dlc));
+	}
+	q->tail = t; /* release the record space */
+	return (uint16_t)(CANQ_RECORD_HDR + dlc);
 }
 
 /**
@@ -313,6 +399,13 @@ uint8_t setupCANbus(CAN_Bus bus, uint32_t mainBitrate, CAN_Mode mode)
 	uint8_t returnval = 0;
 	uint32_t apb1clock = HAL_RCC_GetPCLK1Freq();
 
+	/* A zero bitrate would divide by zero in the timing search and hand the
+	 * HAL garbage timing values — reject it instead. */
+	if (mainBitrate == 0U)
+	{
+		return 1;
+	}
+
 	/* Calculate nominal timing (prescaler max 512) and data timing (prescaler max 32) */
 	uint32_t nomPrescaler, nomSeg1, nomSeg2;
 	uint32_t datPrescaler, datSeg1, datSeg2;
@@ -328,14 +421,8 @@ uint8_t setupCANbus(CAN_Bus bus, uint32_t mainBitrate, CAN_Mode mode)
 		hfdcan1.Instance = FDCAN1;
 		hfdcan1.Init.ClockDivider = FDCAN_CLOCK_DIV1;
 		hfdcan1.Init.FrameFormat = FDCAN_FRAME_CLASSIC;
-		if (mode == NORMAL_MODE)
-		{
-			hfdcan1.Init.Mode = FDCAN_MODE_NORMAL;
-		}
-		else if (mode == LISTEN_ONLY)
-		{
-			hfdcan1.Init.Mode = FDCAN_MODE_BUS_MONITORING;
-		}
+		/* Default to normal mode for any unrecognised mode value. */
+		hfdcan1.Init.Mode = (mode == LISTEN_ONLY) ? FDCAN_MODE_BUS_MONITORING : FDCAN_MODE_NORMAL;
 		hfdcan1.Init.AutoRetransmission = ENABLE;
 		hfdcan1.Init.TransmitPause = DISABLE;
 		hfdcan1.Init.ProtocolException = ENABLE;
@@ -360,14 +447,8 @@ uint8_t setupCANbus(CAN_Bus bus, uint32_t mainBitrate, CAN_Mode mode)
 		hfdcan2.Instance = FDCAN2;
 		hfdcan2.Init.ClockDivider = FDCAN_CLOCK_DIV1;
 		hfdcan2.Init.FrameFormat = FDCAN_FRAME_CLASSIC;
-		if (mode == NORMAL_MODE)
-		{
-			hfdcan2.Init.Mode = FDCAN_MODE_NORMAL;
-		}
-		else if (mode == LISTEN_ONLY)
-		{
-			hfdcan2.Init.Mode = FDCAN_MODE_BUS_MONITORING;
-		}
+		/* Default to normal mode for any unrecognised mode value. */
+		hfdcan2.Init.Mode = (mode == LISTEN_ONLY) ? FDCAN_MODE_BUS_MONITORING : FDCAN_MODE_NORMAL;
 		hfdcan2.Init.AutoRetransmission = ENABLE;
 		hfdcan2.Init.TransmitPause = DISABLE;
 		hfdcan2.Init.ProtocolException = ENABLE;
@@ -400,14 +481,8 @@ uint8_t setupCANbus(CAN_Bus bus, uint32_t mainBitrate, CAN_Mode mode)
 		hfdcan3.Instance = FDCAN3;
 		hfdcan3.Init.ClockDivider = FDCAN_CLOCK_DIV1;
 		hfdcan3.Init.FrameFormat = FDCAN_FRAME_CLASSIC;
-		if (mode == NORMAL_MODE)
-		{
-			hfdcan3.Init.Mode = FDCAN_MODE_NORMAL;
-		}
-		else if (mode == LISTEN_ONLY)
-		{
-			hfdcan3.Init.Mode = FDCAN_MODE_BUS_MONITORING;
-		}
+		/* Default to normal mode for any unrecognised mode value. */
+		hfdcan3.Init.Mode = (mode == LISTEN_ONLY) ? FDCAN_MODE_BUS_MONITORING : FDCAN_MODE_NORMAL;
 		hfdcan3.Init.AutoRetransmission = ENABLE;
 		hfdcan3.Init.TransmitPause = DISABLE;
 		hfdcan3.Init.ProtocolException = ENABLE;
@@ -467,6 +542,13 @@ uint8_t setupCAN_FDbus(CAN_Bus bus, uint32_t mainBitrate, uint32_t dataBitrate, 
 	uint8_t returnval = 0;
 	uint32_t apb1clock = HAL_RCC_GetPCLK1Freq();
 
+	/* A zero bitrate would divide by zero in the timing search and hand the
+	 * HAL garbage timing values — reject it instead. */
+	if ((mainBitrate == 0U) || (dataBitrate == 0U))
+	{
+		return 1;
+	}
+
 	/* Nominal timing uses mainBitrate; data timing uses the separate dataBitrate */
 	uint32_t nomPrescaler, nomSeg1, nomSeg2;
 	uint32_t datPrescaler, datSeg1, datSeg2;
@@ -489,14 +571,8 @@ uint8_t setupCAN_FDbus(CAN_Bus bus, uint32_t mainBitrate, uint32_t dataBitrate, 
 		hfdcan1.Init.ClockDivider = FDCAN_CLOCK_DIV1;
 		hfdcan1.Init.FrameFormat = frameFormat;
 
-		if (mode == NORMAL_MODE)
-		{
-			hfdcan1.Init.Mode = FDCAN_MODE_NORMAL;
-		}
-		else if (mode == LISTEN_ONLY)
-		{
-			hfdcan1.Init.Mode = FDCAN_MODE_BUS_MONITORING;
-		}
+		/* Default to normal mode for any unrecognised mode value. */
+		hfdcan1.Init.Mode = (mode == LISTEN_ONLY) ? FDCAN_MODE_BUS_MONITORING : FDCAN_MODE_NORMAL;
 		hfdcan1.Init.AutoRetransmission = ENABLE;
 		hfdcan1.Init.TransmitPause = DISABLE;
 		hfdcan1.Init.ProtocolException = ENABLE;
@@ -528,14 +604,8 @@ uint8_t setupCAN_FDbus(CAN_Bus bus, uint32_t mainBitrate, uint32_t dataBitrate, 
 		hfdcan2.Instance = FDCAN2;
 		hfdcan2.Init.ClockDivider = FDCAN_CLOCK_DIV1;
 		hfdcan2.Init.FrameFormat = frameFormat;
-		if (mode == NORMAL_MODE)
-		{
-			hfdcan2.Init.Mode = FDCAN_MODE_NORMAL;
-		}
-		else if (mode == LISTEN_ONLY)
-		{
-			hfdcan2.Init.Mode = FDCAN_MODE_BUS_MONITORING;
-		}
+		/* Default to normal mode for any unrecognised mode value. */
+		hfdcan2.Init.Mode = (mode == LISTEN_ONLY) ? FDCAN_MODE_BUS_MONITORING : FDCAN_MODE_NORMAL;
 		hfdcan2.Init.AutoRetransmission = ENABLE;
 		hfdcan2.Init.TransmitPause = DISABLE;
 		hfdcan2.Init.ProtocolException = ENABLE;
@@ -567,14 +637,8 @@ uint8_t setupCAN_FDbus(CAN_Bus bus, uint32_t mainBitrate, uint32_t dataBitrate, 
 		hfdcan3.Instance = FDCAN3;
 		hfdcan3.Init.ClockDivider = FDCAN_CLOCK_DIV1;
 		hfdcan3.Init.FrameFormat = frameFormat;
-		if (mode == NORMAL_MODE)
-		{
-			hfdcan3.Init.Mode = FDCAN_MODE_NORMAL;
-		}
-		else if (mode == LISTEN_ONLY)
-		{
-			hfdcan3.Init.Mode = FDCAN_MODE_BUS_MONITORING;
-		}
+		/* Default to normal mode for any unrecognised mode value. */
+		hfdcan3.Init.Mode = (mode == LISTEN_ONLY) ? FDCAN_MODE_BUS_MONITORING : FDCAN_MODE_NORMAL;
 		hfdcan3.Init.AutoRetransmission = ENABLE;
 		hfdcan3.Init.TransmitPause = DISABLE;
 		hfdcan3.Init.ProtocolException = ENABLE;
@@ -833,10 +897,12 @@ CAN_ErrorStatus getCANErrorStatus(CAN_Bus bus)
 		return status;
 	}
 
-	/* Snapshot the ISR-maintained counters atomically. */
+	/* Snapshot the ISR-maintained counters atomically. PRIMASK is saved and
+	 * restored so a caller that already has interrupts disabled keeps them so. */
+	uint32_t primask = __get_PRIMASK();
 	__disable_irq();
 	memcpy(&status, (const void *)&can_health[idx], sizeof(CAN_ErrorStatus));
-	__enable_irq();
+	__set_PRIMASK(primask);
 
 	/* Refresh the live hardware fields from ECR/PSR. */
 	FDCAN_HandleTypeDef *hfdcan = can_handle_from_index(idx);
@@ -869,101 +935,28 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 
 	if ((RxFifo0ITs & FDCAN_IT_RX_FIFO0_NEW_MESSAGE) != 0)
 	{
-		/* Retrieve Rx messages from RX FIFO0 */
-		if (hfdcan->Instance == FDCAN1)
+		/* Retrieve the Rx message from RX FIFO0 into this bus's staging buffer */
+		FDCAN_RxHeaderTypeDef *rxheader = (cb_idx == 0) ? &CAN1_RxHeader : (cb_idx == 1) ? &CAN2_RxHeader : &CAN3_RxHeader;
+		uint8_t *rxdata = (cb_idx == 0) ? CAN1_RxData : (cb_idx == 1) ? CAN2_RxData : CAN3_RxData;
+
+		if (HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, rxheader, rxdata) != HAL_OK)
 		{
-			if (HAL_FDCAN_GetRxMessage(&hfdcan1, FDCAN_RX_FIFO0, &CAN1_RxHeader, CAN1_RxData) != HAL_OK)
-			{
-				/* Read failed — count the lost frame and keep the gateway running
-				 * (do NOT call Error_Handler(), which would hang all three buses). */
-				can_health[0].rxFifoLostCount++;
-				return;
-			}
-
-			bool Callback_Rx_ID_Type;
-			uint32_t Callback_Rx_ID;
-			uint8_t Callback_Rx_DLC;
-
-			if (CAN1_RxHeader.IdType == FDCAN_EXTENDED_ID)
-			{
-				Callback_Rx_ID_Type = true;
-			}
-			else
-			{
-				Callback_Rx_ID_Type = false;
-			}
-			Callback_Rx_ID = CAN1_RxHeader.Identifier;
-			Callback_Rx_DLC = fdcan_dlc_to_bytes(CAN1_RxHeader.DataLength);
-			if (Callback_Rx_DLC > CAN1_DATALENGTH)
-			{
-				Callback_Rx_DLC = CAN1_DATALENGTH;
-			}
-			if (add_to_CAN_RX_Queue(CAN_1, Callback_Rx_ID_Type, Callback_Rx_ID, Callback_Rx_DLC, CAN1_RxData) != 0)
-			{
-				can_health[0].rxQueueOverflowCount++;
-			}
+			/* Read failed — count the lost frame and keep the gateway running
+			 * (do NOT call Error_Handler(), which would hang all three buses). */
+			can_health[cb_idx].rxFifoLostCount++;
+			return;
 		}
-		if (hfdcan->Instance == FDCAN2)
+
+		bool ext_id = (rxheader->IdType == FDCAN_EXTENDED_ID);
+		uint8_t dlc = fdcan_dlc_to_bytes(rxheader->DataLength);
+		uint8_t max_dlc = can_datalength_from_index(cb_idx);
+		if (dlc > max_dlc)
 		{
-			if (HAL_FDCAN_GetRxMessage(&hfdcan2, FDCAN_RX_FIFO0, &CAN2_RxHeader, CAN2_RxData) != HAL_OK)
-			{
-				can_health[1].rxFifoLostCount++;
-				return;
-			}
-
-			bool Callback_Rx_ID_Type;
-			uint32_t Callback_Rx_ID;
-			uint8_t Callback_Rx_DLC;
-
-			if (CAN2_RxHeader.IdType == FDCAN_EXTENDED_ID)
-			{
-				Callback_Rx_ID_Type = true;
-			}
-			else
-			{
-				Callback_Rx_ID_Type = false;
-			}
-			Callback_Rx_ID = CAN2_RxHeader.Identifier;
-			Callback_Rx_DLC = fdcan_dlc_to_bytes(CAN2_RxHeader.DataLength);
-			if (Callback_Rx_DLC > CAN2_DATALENGTH)
-			{
-				Callback_Rx_DLC = CAN2_DATALENGTH;
-			}
-			if (add_to_CAN_RX_Queue(CAN_2, Callback_Rx_ID_Type, Callback_Rx_ID, Callback_Rx_DLC, CAN2_RxData) != 0)
-			{
-				can_health[1].rxQueueOverflowCount++;
-			}
+			dlc = max_dlc; /* truncate to the bus's configured max data length */
 		}
-		if (hfdcan->Instance == FDCAN3)
+		if (canq_push(can_rx_queue_from_index(cb_idx), ext_id, rxheader->Identifier, dlc, rxdata) != 0)
 		{
-			if (HAL_FDCAN_GetRxMessage(&hfdcan3, FDCAN_RX_FIFO0, &CAN3_RxHeader, CAN3_RxData) != HAL_OK)
-			{
-				can_health[2].rxFifoLostCount++;
-				return;
-			}
-
-			bool Callback_Rx_ID_Type;
-			uint32_t Callback_Rx_ID;
-			uint8_t Callback_Rx_DLC;
-
-			if (CAN3_RxHeader.IdType == FDCAN_EXTENDED_ID)
-			{
-				Callback_Rx_ID_Type = true;
-			}
-			else
-			{
-				Callback_Rx_ID_Type = false;
-			}
-			Callback_Rx_ID = CAN3_RxHeader.Identifier;
-			Callback_Rx_DLC = fdcan_dlc_to_bytes(CAN3_RxHeader.DataLength);
-			if (Callback_Rx_DLC > CAN3_DATALENGTH)
-			{
-				Callback_Rx_DLC = CAN3_DATALENGTH;
-			}
-			if (add_to_CAN_RX_Queue(CAN_3, Callback_Rx_ID_Type, Callback_Rx_ID, Callback_Rx_DLC, CAN3_RxData) != 0)
-			{
-				can_health[2].rxQueueOverflowCount++;
-			}
+			can_health[cb_idx].rxQueueOverflowCount++;
 		}
 	}
 }
@@ -989,71 +982,26 @@ uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, 
 	uint8_t return_val = 0;
 	if ((bus & CAN_1) == CAN_1)
 	{
-		can1_Rx_qNextHead = (can1_Rx_qHead + 1) & (CAN1_RX_MSG_BUFFER_SIZE - 1);
-		/*  if there is room */
-		if (can1_Rx_qNextHead != can1_Rx_qTail)
+		uint8_t dlc_c = (DLC > CAN1_DATALENGTH) ? CAN1_DATALENGTH : DLC;
+		if (canq_push(&can1_Rx_q, EXT_ID, ID, dlc_c, rxData) != 0)
 		{
-			uint8_t dlc_c = (DLC > CAN1_DATALENGTH) ? CAN1_DATALENGTH : DLC;
-			can1_Rx_qData[can1_Rx_qHead].EXT_ID = EXT_ID;
-			can1_Rx_qData[can1_Rx_qHead].arb_id = ID;
-			can1_Rx_qData[can1_Rx_qHead].dlc = dlc_c;
-			for (uint8_t i = 0; i < dlc_c; i++)
-			{
-				can1_Rx_qData[can1_Rx_qHead].data[i] = rxData[i];
-			}
-			can1_Rx_qHead = can1_Rx_qNextHead;
-			can1_Rx_qElements++;
-		}
-		else
-		{
-			/* no room left in the buffer */
-			return_val = 1;
+			return_val = 1; /* no room left in the buffer */
 		}
 	}
 	if ((bus & CAN_2) == CAN_2)
 	{
-		can2_Rx_qNextHead = (can2_Rx_qHead + 1) & (CAN2_RX_MSG_BUFFER_SIZE - 1);
-		/*  if there is room */
-		if (can2_Rx_qNextHead != can2_Rx_qTail)
+		uint8_t dlc_c = (DLC > CAN2_DATALENGTH) ? CAN2_DATALENGTH : DLC;
+		if (canq_push(&can2_Rx_q, EXT_ID, ID, dlc_c, rxData) != 0)
 		{
-			uint8_t dlc_c = (DLC > CAN2_DATALENGTH) ? CAN2_DATALENGTH : DLC;
-			can2_Rx_qData[can2_Rx_qHead].EXT_ID = EXT_ID;
-			can2_Rx_qData[can2_Rx_qHead].arb_id = ID;
-			can2_Rx_qData[can2_Rx_qHead].dlc = dlc_c;
-			for (uint8_t i = 0; i < dlc_c; i++)
-			{
-				can2_Rx_qData[can2_Rx_qHead].data[i] = rxData[i];
-			}
-			can2_Rx_qHead = can2_Rx_qNextHead;
-			can2_Rx_qElements++;
-		}
-		else
-		{
-			/* no room left in the buffer */
-			return_val = 2;
+			return_val = 2; /* no room left in the buffer */
 		}
 	}
 	if ((bus & CAN_3) == CAN_3)
 	{
-		can3_Rx_qNextHead = (can3_Rx_qHead + 1) & (CAN3_RX_MSG_BUFFER_SIZE - 1);
-		/*  if there is room */
-		if (can3_Rx_qNextHead != can3_Rx_qTail)
+		uint8_t dlc_c = (DLC > CAN3_DATALENGTH) ? CAN3_DATALENGTH : DLC;
+		if (canq_push(&can3_Rx_q, EXT_ID, ID, dlc_c, rxData) != 0)
 		{
-			uint8_t dlc_c = (DLC > CAN3_DATALENGTH) ? CAN3_DATALENGTH : DLC;
-			can3_Rx_qData[can3_Rx_qHead].EXT_ID = EXT_ID;
-			can3_Rx_qData[can3_Rx_qHead].arb_id = ID;
-			can3_Rx_qData[can3_Rx_qHead].dlc = dlc_c;
-			for (uint8_t i = 0; i < dlc_c; i++)
-			{
-				can3_Rx_qData[can3_Rx_qHead].data[i] = rxData[i];
-			}
-			can3_Rx_qHead = can3_Rx_qNextHead;
-			can3_Rx_qElements++;
-		}
-		else
-		{
-			/* no room left in the buffer */
-			return_val = 3;
+			return_val = 3; /* no room left in the buffer */
 		}
 	}
 	return return_val;
@@ -1064,31 +1012,17 @@ uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, 
  * \param bus CAN_1, CAN_2, and/or CAN_3.
  * \param is_extended_id True or False.
  * \param arbitration_id Message ID.
- * \param dlc Data Length.
- * \param data Message data (8 Bytes).
- * \return 1, 2, or 3 based on CAN Bus applicable
+ * \param dlc Data Length in bytes (clamped to the bus's CANx_DATALENGTH).
+ * \param data Message data; must hold at least dlc bytes.
+ * \return 0 on success; 1, 2, or 3 identifying the bus whose queue was full
  */
 uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t data[])
 {
 	uint8_t return_val = 0;
 	if ((bus & CAN_1) == CAN_1)
 	{
-		can1_Tx_qNextHead = (can1_Tx_qHead + 1) & (CAN1_TX_MSG_BUFFER_SIZE - 1);
-		/*  if there is room */
-		if (can1_Tx_qNextHead != can1_Tx_qTail)
-		{
-			uint8_t dlc_c = (dlc > CAN1_DATALENGTH) ? CAN1_DATALENGTH : dlc;
-			can1_Tx_qData[can1_Tx_qHead].EXT_ID = is_extended_id;
-			can1_Tx_qData[can1_Tx_qHead].arb_id = arbitration_id;
-			can1_Tx_qData[can1_Tx_qHead].dlc = dlc_c;
-			for (uint8_t i = 0; i < dlc_c; i++)
-			{
-				can1_Tx_qData[can1_Tx_qHead].data[i] = data[i];
-			}
-			can1_Tx_qHead = can1_Tx_qNextHead;
-			can1_Tx_qElements++;
-		}
-		else
+		uint8_t dlc_c = (dlc > CAN1_DATALENGTH) ? CAN1_DATALENGTH : dlc;
+		if (canq_push(&can1_Tx_q, is_extended_id, arbitration_id, dlc_c, data) != 0)
 		{
 			/* no room left in the buffer */
 			can_health[0].txQueueOverflowCount++;
@@ -1097,22 +1031,8 @@ uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, 
 	}
 	if ((bus & CAN_2) == CAN_2)
 	{
-		can2_Tx_qNextHead = (can2_Tx_qHead + 1) & (CAN2_TX_MSG_BUFFER_SIZE - 1);
-		/*  if there is room */
-		if (can2_Tx_qNextHead != can2_Tx_qTail)
-		{
-			uint8_t dlc_c = (dlc > CAN2_DATALENGTH) ? CAN2_DATALENGTH : dlc;
-			can2_Tx_qData[can2_Tx_qHead].EXT_ID = is_extended_id;
-			can2_Tx_qData[can2_Tx_qHead].arb_id = arbitration_id;
-			can2_Tx_qData[can2_Tx_qHead].dlc = dlc_c;
-			for (uint8_t i = 0; i < dlc_c; i++)
-			{
-				can2_Tx_qData[can2_Tx_qHead].data[i] = data[i];
-			}
-			can2_Tx_qHead = can2_Tx_qNextHead;
-			can2_Tx_qElements++;
-		}
-		else
+		uint8_t dlc_c = (dlc > CAN2_DATALENGTH) ? CAN2_DATALENGTH : dlc;
+		if (canq_push(&can2_Tx_q, is_extended_id, arbitration_id, dlc_c, data) != 0)
 		{
 			/* no room left in the buffer */
 			can_health[1].txQueueOverflowCount++;
@@ -1121,22 +1041,8 @@ uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, 
 	}
 	if ((bus & CAN_3) == CAN_3)
 	{
-		can3_Tx_qNextHead = (can3_Tx_qHead + 1) & (CAN3_TX_MSG_BUFFER_SIZE - 1);
-		/*  if there is room */
-		if (can3_Tx_qNextHead != can3_Tx_qTail)
-		{
-			uint8_t dlc_c = (dlc > CAN3_DATALENGTH) ? CAN3_DATALENGTH : dlc;
-			can3_Tx_qData[can3_Tx_qHead].EXT_ID = is_extended_id;
-			can3_Tx_qData[can3_Tx_qHead].arb_id = arbitration_id;
-			can3_Tx_qData[can3_Tx_qHead].dlc = dlc_c;
-			for (uint8_t i = 0; i < dlc_c; i++)
-			{
-				can3_Tx_qData[can3_Tx_qHead].data[i] = data[i];
-			}
-			can3_Tx_qHead = can3_Tx_qNextHead;
-			can3_Tx_qElements++;
-		}
-		else
+		uint8_t dlc_c = (dlc > CAN3_DATALENGTH) ? CAN3_DATALENGTH : dlc;
+		if (canq_push(&can3_Tx_q, is_extended_id, arbitration_id, dlc_c, data) != 0)
 		{
 			/* no room left in the buffer */
 			can_health[2].txQueueOverflowCount++;
@@ -1150,75 +1056,25 @@ uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, 
 void trigger_CAN_RX()
 {
 	CAN_Message message;
-	while (can1_Rx_qElements > 0)
-	{
-		__disable_irq();  // Protect queue access
-		if (can1_Rx_qElements == 0) {
-			__enable_irq();
-			break;  // Double-check after disabling interrupts
-		}
-		
-		message.Bus = CAN_1;
-		message.is_extended_id = can1_Rx_qData[can1_Rx_qTail].EXT_ID;
-		message.arbitration_id = can1_Rx_qData[can1_Rx_qTail].arb_id;
-		message.dlc = can1_Rx_qData[can1_Rx_qTail].dlc;
-		for (uint8_t i = 0; i < message.dlc; i++)
-		{
-			message.data[i] = can1_Rx_qData[can1_Rx_qTail].data[i];
-		}
-		can1_Rx_qTail = (can1_Rx_qTail + 1) & (CAN1_RX_MSG_BUFFER_SIZE - 1);
-		can1_Rx_qElements--;
-		__enable_irq();  // Re-enable interrupts
-		
- 		// Now, you can call onReceive with a single CANMessage struct.
-		onReceive(message);
-	}
 
-	while (can2_Rx_qElements > 0)
+	for (int idx = 0; idx < 3; idx++)
 	{
-		__disable_irq();  // Protect queue access
-		if (can2_Rx_qElements == 0) {
-			__enable_irq();
-			break;  // Double-check after disabling interrupts
-		}
-		
-		message.Bus = CAN_2;
-		message.is_extended_id = can2_Rx_qData[can2_Rx_qTail].EXT_ID;
-		message.arbitration_id = can2_Rx_qData[can2_Rx_qTail].arb_id;
-		message.dlc = can2_Rx_qData[can2_Rx_qTail].dlc;
-		for (uint8_t i = 0; i < message.dlc; i++)
+		CAN_ByteQueue *q = can_rx_queue_from_index(idx);
+		/* Drain at most the data present on entry, so a continuous flood on a
+		 * bus cannot trap the main loop in here and starve the timed events. */
+		uint16_t budget = canq_used(q);
+		while (budget > 0)
 		{
-			message.data[i] = can2_Rx_qData[can2_Rx_qTail].data[i];
+			uint16_t consumed = canq_pop(q, &message);
+			if (consumed == 0)
+			{
+				break;
+			}
+			budget = (consumed < budget) ? (uint16_t)(budget - consumed) : 0;
+			message.Bus = can_bus_from_index(idx);
+			// Now, you can call onReceive with a single CANMessage struct.
+			onReceive(message);
 		}
-		can2_Rx_qTail = (can2_Rx_qTail + 1) & (CAN2_RX_MSG_BUFFER_SIZE - 1);
-		can2_Rx_qElements--;
-		__enable_irq();  // Re-enable interrupts
-		
-		/* */ // Do things with the  Can 2 Messages here....
-		onReceive(message);
-	}
-	while (can3_Rx_qElements > 0)
-	{
-		__disable_irq();  // Protect queue access
-		if (can3_Rx_qElements == 0) {
-			__enable_irq();
-			break;  // Double-check after disabling interrupts
-		}
-		
-		message.Bus = CAN_3;
-		message.is_extended_id = can3_Rx_qData[can3_Rx_qTail].EXT_ID;
-		message.arbitration_id = can3_Rx_qData[can3_Rx_qTail].arb_id;
-		message.dlc = can3_Rx_qData[can3_Rx_qTail].dlc;
-		for (uint8_t i = 0; i < message.dlc; i++)
-		{
-			message.data[i] = can3_Rx_qData[can3_Rx_qTail].data[i];
-		}
-		can3_Rx_qTail = (can3_Rx_qTail + 1) & (CAN3_RX_MSG_BUFFER_SIZE - 1);
-		can3_Rx_qElements--;
-		__enable_irq();  // Re-enable interrupts
-		
-		/* */ // Do things with the  Can 3 Messages here....
-		onReceive(message);
 	}
 }
 
@@ -1259,129 +1115,67 @@ static void service_CAN_faults(void)
 	}
 }
 
+/* Drain one bus's TX queue into its hardware TX FIFO. */
+static void can_tx_drain(int idx)
+{
+	FDCAN_HandleTypeDef *hfdcan = can_handle_from_index(idx);
+	if (HAL_FDCAN_GetState(hfdcan) != HAL_FDCAN_STATE_BUSY)
+	{
+		return; /* bus not started */
+	}
+
+	CAN_ByteQueue *q = can_tx_queue_from_index(idx);
+	FDCAN_TxHeaderTypeDef *txheader = (idx == 0) ? &CAN1_TxHeader : (idx == 1) ? &CAN2_TxHeader : &CAN3_TxHeader;
+	uint8_t *txdata = (idx == 0) ? CAN1_TxData : (idx == 1) ? CAN2_TxData : CAN3_TxData;
+
+	/* Frame format follows the bus configuration, not just the message length. */
+	bool fd_bus = (hfdcan->Init.FrameFormat != FDCAN_FRAME_CLASSIC);
+	bool brs_bus = (hfdcan->Init.FrameFormat == FDCAN_FRAME_FD_BRS);
+
+	uint32_t freelevel = HAL_FDCAN_GetTxFifoFreeLevel(hfdcan);
+	CAN_Message message;
+	while ((freelevel > 0) && (canq_pop(q, &message) != 0))
+	{
+		uint8_t bytes = message.dlc;
+		if (!fd_bus && bytes > 8U)
+		{
+			bytes = 8U; /* a classic bus cannot carry FD payload lengths */
+		}
+
+		txheader->IdType = message.is_extended_id ? FDCAN_EXTENDED_ID : FDCAN_STANDARD_ID;
+		txheader->Identifier = message.arbitration_id;
+		txheader->DataLength = bytes_to_fdcan_dlc(bytes);
+		txheader->FDFormat = (fd_bus && bytes > 8U) ? FDCAN_FD_CAN : FDCAN_CLASSIC_CAN;
+		txheader->TxFrameType = FDCAN_DATA_FRAME;
+		txheader->ErrorStateIndicator = FDCAN_ESI_ACTIVE;
+		txheader->BitRateSwitch = (brs_bus && bytes > 8U) ? FDCAN_BRS_ON : FDCAN_BRS_OFF;
+		txheader->TxEventFifoControl = FDCAN_NO_TX_EVENTS;
+		txheader->MessageMarker = 0;
+
+		/* The hardware always transmits a full FD frame length; zero-pad so
+		 * stale staging bytes never reach the wire (e.g. dlc 13 -> 16 bytes). */
+		uint8_t wire_bytes = fdcan_dlc_to_bytes(txheader->DataLength);
+		memcpy(txdata, message.data, bytes);
+		if (wire_bytes > bytes)
+		{
+			memset(&txdata[bytes], 0, (size_t)(wire_bytes - bytes));
+		}
+
+		if (HAL_FDCAN_AddMessageToTxFifoQ(hfdcan, txheader, txdata) != HAL_OK)
+		{
+			can_health[idx].txFifoFullCount++;
+		}
+		freelevel--;
+	}
+}
+
 /* Callback to Transmit Messages to CANBuses*/
 void trigger_CAN_TX()
 {
 	service_CAN_faults();
-
-	if (HAL_FDCAN_GetState(&hfdcan1) == HAL_FDCAN_STATE_BUSY)
-	{
-		uint8_t can1_freelevel = HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan1);
-		while ((can1_freelevel > 0) & (can1_Tx_qElements > 0))
-		{
-			if (can1_Tx_qData[can1_Tx_qTail].EXT_ID == true)
-			{
-				CAN1_TxHeader.IdType = FDCAN_EXTENDED_ID;
-			}
-			else
-			{
-				CAN1_TxHeader.IdType = FDCAN_STANDARD_ID;
-			}
-
-			CAN1_TxHeader.Identifier = can1_Tx_qData[can1_Tx_qTail].arb_id;
-			{
-				uint8_t can1_tx_bytes = (can1_Tx_qData[can1_Tx_qTail].dlc <= CAN1_DATALENGTH)
-				                        ? can1_Tx_qData[can1_Tx_qTail].dlc : CAN1_DATALENGTH;
-				CAN1_TxHeader.DataLength = bytes_to_fdcan_dlc(can1_tx_bytes);
-			}
-			CAN1_TxHeader.FDFormat = (can1_Tx_qData[can1_Tx_qTail].dlc > 8) ? FDCAN_FD_CAN : FDCAN_CLASSIC_CAN;
-			CAN1_TxHeader.TxFrameType = FDCAN_DATA_FRAME;
-			CAN1_TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
-			CAN1_TxHeader.BitRateSwitch = FDCAN_BRS_ON;
-			CAN1_TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
-			CAN1_TxHeader.MessageMarker = 0;
-			for (uint8_t i = 0; i < can1_Tx_qData[can1_Tx_qTail].dlc; i++)
-			{
-				CAN1_TxData[i] = can1_Tx_qData[can1_Tx_qTail].data[i];
-			}
-			if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan1, &CAN1_TxHeader, CAN1_TxData) != HAL_OK)
-			{
-				can_health[0].txFifoFullCount++;
-			}
-			can1_Tx_qTail = (can1_Tx_qTail + 1) & (CAN1_TX_MSG_BUFFER_SIZE - 1);
-			can1_Tx_qElements--;
-			can1_freelevel--;
-		}
-	}
-
-	if (HAL_FDCAN_GetState(&hfdcan2) == HAL_FDCAN_STATE_BUSY)
-	{
-		uint8_t can2_freelevel = HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan2);
-		while ((can2_freelevel > 0) && (can2_Tx_qElements > 0))
-		{
-			if (can2_Tx_qData[can2_Tx_qTail].EXT_ID == true)
-			{
-				CAN2_TxHeader.IdType = FDCAN_EXTENDED_ID;
-			}
-			else
-			{
-				CAN2_TxHeader.IdType = FDCAN_STANDARD_ID;
-			}
-			CAN2_TxHeader.Identifier = can2_Tx_qData[can2_Tx_qTail].arb_id;
-			{
-				uint8_t can2_tx_bytes = (can2_Tx_qData[can2_Tx_qTail].dlc <= CAN2_DATALENGTH)
-				                        ? can2_Tx_qData[can2_Tx_qTail].dlc : CAN2_DATALENGTH;
-				CAN2_TxHeader.DataLength = bytes_to_fdcan_dlc(can2_tx_bytes);
-			}
-			CAN2_TxHeader.FDFormat = (can2_Tx_qData[can2_Tx_qTail].dlc > 8) ? FDCAN_FD_CAN : FDCAN_CLASSIC_CAN;
-			CAN2_TxHeader.TxFrameType = FDCAN_DATA_FRAME;
-			CAN2_TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
-			CAN2_TxHeader.BitRateSwitch = FDCAN_BRS_ON;
-			CAN2_TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
-			CAN2_TxHeader.MessageMarker = 0;
-			for (uint8_t i = 0; i < can2_Tx_qData[can2_Tx_qTail].dlc; i++)
-			{
-				CAN2_TxData[i] = can2_Tx_qData[can2_Tx_qTail].data[i];
-			}
-			if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan2, &CAN2_TxHeader, CAN2_TxData) != HAL_OK)
-			{
-				can_health[1].txFifoFullCount++;
-			}
-			can2_Tx_qTail = (can2_Tx_qTail + 1) & (CAN2_TX_MSG_BUFFER_SIZE - 1);
-			can2_Tx_qElements--;
-			can2_freelevel--;
-		}
-	}
-
-	if (HAL_FDCAN_GetState(&hfdcan3) == HAL_FDCAN_STATE_BUSY)
-	{
-		uint8_t can3_freelevel = HAL_FDCAN_GetTxFifoFreeLevel(&hfdcan3);
-		while ((can3_freelevel > 0) && (can3_Tx_qElements > 0))
-		{
-			if (can3_Tx_qData[can3_Tx_qTail].EXT_ID == true)
-			{
-				CAN3_TxHeader.IdType = FDCAN_EXTENDED_ID;
-			}
-			else
-			{
-				CAN3_TxHeader.IdType = FDCAN_STANDARD_ID;
-			}
-
-			CAN3_TxHeader.Identifier = can3_Tx_qData[can3_Tx_qTail].arb_id;
-			{
-				uint8_t can3_tx_bytes = (can3_Tx_qData[can3_Tx_qTail].dlc <= CAN3_DATALENGTH)
-				                        ? can3_Tx_qData[can3_Tx_qTail].dlc : CAN3_DATALENGTH;
-				CAN3_TxHeader.DataLength = bytes_to_fdcan_dlc(can3_tx_bytes);
-			}
-			CAN3_TxHeader.FDFormat = (can3_Tx_qData[can3_Tx_qTail].dlc > 8) ? FDCAN_FD_CAN : FDCAN_CLASSIC_CAN;
-			CAN3_TxHeader.TxFrameType = FDCAN_DATA_FRAME;
-			CAN3_TxHeader.ErrorStateIndicator = FDCAN_ESI_ACTIVE;
-			CAN3_TxHeader.BitRateSwitch = FDCAN_BRS_ON;
-			CAN3_TxHeader.TxEventFifoControl = FDCAN_NO_TX_EVENTS;
-			CAN3_TxHeader.MessageMarker = 0;
-			for (uint8_t i = 0; i < can3_Tx_qData[can3_Tx_qTail].dlc; i++)
-			{
-				CAN3_TxData[i] = can3_Tx_qData[can3_Tx_qTail].data[i];
-			}
-			if (HAL_FDCAN_AddMessageToTxFifoQ(&hfdcan3, &CAN3_TxHeader, CAN3_TxData) != HAL_OK)
-			{
-				can_health[2].txFifoFullCount++;
-			}
-			can3_Tx_qTail = (can3_Tx_qTail + 1) & (CAN3_TX_MSG_BUFFER_SIZE - 1);
-			can3_Tx_qElements--;
-			can3_freelevel--;
-		}
-	}
+	can_tx_drain(0);
+	can_tx_drain(1);
+	can_tx_drain(2);
 }
 
 /* Callback for bus error-STATE changes (Error-Warning / Error-Passive / Bus-Off).
@@ -1913,60 +1707,79 @@ void toggleLED(gpio_LED led)
 	}
 }
 
-/* Flash Back Data to the last Page in FLASH Memory */
+/* Flash Back Data to a user Page in FLASH Memory (pages above the application).
+ * Guards: the page must exist on this device, the data must fit in one page,
+ * the page that is programmed is the same page that gets erased, and nothing
+ * is programmed if the erase fails. */
 void writeFlash(uint32_t page, uint8_t *Data, uint16_t dataSize)
 {
-	if ((storecompleted == false) && (page > 30))
+	const uint32_t total_pages = FLASH_SIZE / FLASH_PAGE_SIZE;
+
+	if ((storecompleted != false) || (page <= 30) || (page >= total_pages) ||
+		(Data == NULL) || (dataSize == 0) || (dataSize > FLASH_PAGE_SIZE))
 	{
-		static FLASH_EraseInitTypeDef EraseInitStruct;
-		uint32_t PAGEError;
-
-		/* Unlock the Flash to enable the flash control register access *************/
-		HAL_FLASH_Unlock();
-		/* Erase the user Flash area*/
-		/* Fill EraseInit structure*/
-		EraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
-		EraseInitStruct.Banks = FLASH_BANK_1;
-		EraseInitStruct.Page = 31;
-		EraseInitStruct.NbPages = 1;
-
-		if (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK)
-		{
-			/*Error occurred while page erase.*/
-			HAL_FLASH_GetError();
-		}
-		/* Program the user Flash area word by word*/
-		uint32_t pageaddress = 2048 * page + 0x08000000;
-		uint16_t j = 0;
-		HAL_StatusTypeDef status;
-		for (uint32_t i = 0; i < dataSize; i += 8)
-		{
-			uint64_t writeValue = 0;
-
-			// Construct the double word from the data array
-			for (int k = 0; k < 8; ++k)
-			{
-				if (i + k < dataSize)
-				{
-					writeValue |= ((uint64_t)Data[j + k]) << (k * 8);
-				}
-			}
-
-			status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, pageaddress, writeValue);
-			if (status == HAL_OK)
-			{
-				pageaddress += 8;
-				j += 8;
-			}
-			else
-			{
-				// Handle error
-				break;
-			}
-		}
-		HAL_FLASH_Lock();
-		storecompleted = true;
+		return;
 	}
+
+	static FLASH_EraseInitTypeDef EraseInitStruct;
+	uint32_t PAGEError;
+
+	/* Unlock the Flash to enable the flash control register access *************/
+	HAL_FLASH_Unlock();
+	/* Erase the page that is about to be programmed */
+	EraseInitStruct.TypeErase = FLASH_TYPEERASE_PAGES;
+	EraseInitStruct.NbPages = 1;
+#if defined(FLASH_BANK_2)
+	{
+		/* Dual-bank device (DBANK=1 factory default on the STM32G473): the HAL
+		 * numbers pages within each bank, while `page` counts linearly. */
+		const uint32_t pages_per_bank = total_pages / 2U;
+		EraseInitStruct.Banks = (page < pages_per_bank) ? FLASH_BANK_1 : FLASH_BANK_2;
+		EraseInitStruct.Page = page % pages_per_bank;
+	}
+#else
+	EraseInitStruct.Banks = FLASH_BANK_1;
+	EraseInitStruct.Page = page;
+#endif
+
+	if (HAL_FLASHEx_Erase(&EraseInitStruct, &PAGEError) != HAL_OK)
+	{
+		/* Error occurred while page erase — do not program a non-erased page. */
+		HAL_FLASH_GetError();
+		HAL_FLASH_Lock();
+		return;
+	}
+	/* Program the user Flash area word by word*/
+	uint32_t pageaddress = FLASH_PAGE_SIZE * page + FLASH_BASE;
+	uint16_t j = 0;
+	HAL_StatusTypeDef status;
+	for (uint32_t i = 0; i < dataSize; i += 8)
+	{
+		uint64_t writeValue = 0;
+
+		// Construct the double word from the data array
+		for (int k = 0; k < 8; ++k)
+		{
+			if (i + k < dataSize)
+			{
+				writeValue |= ((uint64_t)Data[j + k]) << (k * 8);
+			}
+		}
+
+		status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, pageaddress, writeValue);
+		if (status == HAL_OK)
+		{
+			pageaddress += 8;
+			j += 8;
+		}
+		else
+		{
+			// Programming failed — stop; flash is locked again below.
+			break;
+		}
+	}
+	HAL_FLASH_Lock();
+	storecompleted = true;
 }
 
 /**
@@ -2066,6 +1879,23 @@ void serialWrite(const uint8_t *data, uint16_t length)
 }
 
 /**
+ * \brief Resets the serial TX double-buffer state after a UART error/abort.
+ * Called from the UART recovery path: an aborted DMA transfer never fires
+ * HAL_UART_TxCpltCallback, which would otherwise leave uart_sending latched
+ * true and silence all serial output permanently.
+ */
+void reset_Serial_Comms(void)
+{
+	uint32_t primask = __get_PRIMASK();
+	__disable_irq();
+	array0.length = 0;
+	array1.length = 0;
+	uart_array = 0;
+	uart_sending = false;
+	__set_PRIMASK(primask);
+}
+
+/**
  * \brief Backend Function to Send Messages to Serial Terminal
  */
 void tx_Serial_Comms()
@@ -2099,6 +1929,11 @@ void tx_Serial_Comms()
  */
 float process_ieee754(uint32_t value, uint32_t bitmask, float factor, float offset, uint8_t decimal_places)
 {
+	if (bitmask == 0U)
+	{
+		return offset; /* no bits selected; __builtin_ctz(0) is undefined */
+	}
+
 	// Find the least significant bit set (LSB position)
 	int lsbset = __builtin_ctz(bitmask);
 
@@ -2141,6 +1976,11 @@ double dbc_decode(const uint8_t *data, datatype_t datatype, bool is_big_endian, 
 {
 	uint64_t value = 0;
 
+	if (data == NULL || dbc_bit_length == 0 || dbc_bit_length > 64)
+	{
+		return 0.0; /* invalid signal description */
+	}
+
 	// Calculate initial byte and bit index.
 	int byte_index = dbc_start_bit / 8;
 	int bit_index = dbc_start_bit % 8;
@@ -2148,8 +1988,16 @@ double dbc_decode(const uint8_t *data, datatype_t datatype, bool is_big_endian, 
 	// Extract bits one by one.
 	for (uint8_t i = 0; i < dbc_bit_length; i++)
 	{
-		// Extract the bit at the current position.
-		value |= ((data[byte_index] & (1 << bit_index)) >> bit_index) << i;
+		/* Stop instead of reading outside the 64-byte CAN payload range if a
+		 * bad start-bit/endianness combination walks off the message. */
+		if (byte_index < 0 || byte_index > 63)
+		{
+			break;
+		}
+
+		// Extract the bit at the current position (64-bit math: a plain int
+		// shift would invoke UB and sign-extend for bit positions >= 31).
+		value |= ((uint64_t)((data[byte_index] >> bit_index) & 1U)) << i;
 
 		// Move to the next bit.
 		bit_index++;
@@ -2196,10 +2044,12 @@ double dbc_decode(const uint8_t *data, datatype_t datatype, bool is_big_endian, 
 	}
 
 	// For non-floating point types, perform sign extension if the signal is signed.
-	int64_t signed_value = value;
-	if (datatype == DBC_SIGNED && (value & (1ULL << (dbc_bit_length - 1))))
+	// (For 64-bit signals the plain cast already is the two's-complement value;
+	// shifting by 64 would be undefined behavior.)
+	int64_t signed_value = (int64_t)value;
+	if (datatype == DBC_SIGNED && dbc_bit_length < 64 && (value & (1ULL << (dbc_bit_length - 1))))
 	{
-		signed_value = value - (1LL << dbc_bit_length);
+		signed_value = (int64_t)(value - (1ULL << dbc_bit_length));
 	}
 
 	// Apply factor and offset.
@@ -2227,6 +2077,12 @@ double dbc_decode(const uint8_t *data, datatype_t datatype, bool is_big_endian, 
  */
 int dbc_encode(uint8_t *data, size_t msg_data_length, datatype_t datatype, bool is_big_endian, double scaled_value, uint8_t dbc_start_bit, uint8_t dbc_bit_length, float factor, float offset)
 {
+	// Reject invalid signal descriptions before touching the data array.
+	if (data == NULL || msg_data_length == 0 || dbc_bit_length == 0 || dbc_bit_length > 64)
+	{
+		return -1;
+	}
+
 	// Check if the bit range fits into the provided array.
 	if (!is_big_endian)
 	{
@@ -2238,10 +2094,15 @@ int dbc_encode(uint8_t *data, size_t msg_data_length, datatype_t datatype, bool 
 	}
 	else
 	{
-		// Big-endian: Check that the signal does not underflow past the first byte.
+		// Big-endian: The starting byte must lie inside the message, and the
+		// signal must not underflow past the first byte.
 		int starting_byte = dbc_start_bit / 8;
 		int starting_bit = dbc_start_bit % 8;
 		int available_bits = (starting_byte + 1) * 8 - starting_bit;
+		if ((size_t)starting_byte >= msg_data_length)
+		{
+			return -1; // Start bit outside the message.
+		}
 		if (dbc_bit_length > available_bits)
 		{
 			return -1; // Not enough space.
@@ -2278,11 +2139,17 @@ int dbc_encode(uint8_t *data, size_t msg_data_length, datatype_t datatype, bool 
 	// Otherwise, handle the value as an integer signal.
 	else
 	{
+		if (factor == 0.0f)
+		{
+			return -1; // Division by zero — invalid DBC factor for an integer signal.
+		}
 		double temp = (scaled_value - offset) / factor;
 		raw = (int64_t)round(temp);
 
 		// If the signal is signed and raw is negative, convert it to two's complement.
-		if (datatype == DBC_SIGNED && raw < 0)
+		// (For 64-bit signals the value already is its own two's complement;
+		// shifting by 64 would be undefined behavior.)
+		if (datatype == DBC_SIGNED && raw < 0 && dbc_bit_length < 64)
 		{
 			raw = (1LL << dbc_bit_length) + raw;
 		}
@@ -2334,6 +2201,11 @@ int dbc_encode(uint8_t *data, size_t msg_data_length, datatype_t datatype, bool 
  */
 float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, float factor, float offset, int8_t decimal_places)
 {
+	if (bitmask == 0U)
+	{
+		return offset; /* no bits selected; __builtin_ctz(0) is undefined */
+	}
+
 	// Find the least significant bit set (LSB position)
 	int lsbset = __builtin_ctz(bitmask);
 
@@ -2346,7 +2218,7 @@ float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, floa
 
 	// Identify the number of bits used
 	int bit_length = 32 - __builtin_clz(bitmask); // Total bits in the bitmask
-	uint32_t sign_bit = 1 << (bit_length - 1);	  // The sign bit location
+	uint32_t sign_bit = 1U << (bit_length - 1);	  // The sign bit location (unsigned: 1 << 31 would overflow int)
 
 	int32_t signed_value;
 	if (is_signed && (value & sign_bit))
@@ -2379,6 +2251,11 @@ float process_float_value(uint32_t value, uint32_t bitmask, bool is_signed, floa
  */
 int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int32_t factor, int32_t offset)
 {
+	if (bitmask == 0U)
+	{
+		return offset; /* no bits selected; __builtin_ctz(0) is undefined */
+	}
+
 	// Find the least significant bit set (LSB position)
 	int lsbset = __builtin_ctz(bitmask);
 
@@ -2391,7 +2268,7 @@ int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int3
 
 	// Identify the number of bits used
 	int bit_length = 32 - __builtin_clz(bitmask); // Total bits in the bitmask
-	uint32_t sign_bit = 1 << (bit_length - 1);	  // The sign bit location
+	uint32_t sign_bit = 1U << (bit_length - 1);	  // The sign bit location (unsigned: 1 << 31 would overflow int)
 
 	int32_t signed_value;
 	if (is_signed && (value & sign_bit))
@@ -2420,6 +2297,11 @@ int32_t process_int_value(uint32_t value, uint32_t bitmask, bool is_signed, int3
  */
 uint32_t process_unsigned_int_value(uint32_t value, uint32_t bitmask, uint32_t factor, uint32_t offset)
 {
+	if (bitmask == 0U)
+	{
+		return offset; /* no bits selected; __builtin_ctz(0) is undefined */
+	}
+
 	// Find the least significant bit set (LSB position)
 	int lsbset = __builtin_ctz(bitmask);
 
@@ -2447,6 +2329,11 @@ uint32_t process_unsigned_int_value(uint32_t value, uint32_t bitmask, uint32_t f
  */
 uint32_t process_raw_value(uint32_t value, uint32_t bitmask)
 {
+	if (bitmask == 0U)
+	{
+		return 0U; /* no bits selected; __builtin_ctz(0) is undefined */
+	}
+
 	// Find the least significant bit set (LSB position)
 	int lsbset = __builtin_ctz(bitmask);
 
@@ -2467,9 +2354,9 @@ uint32_t process_raw_value(uint32_t value, uint32_t bitmask)
  */
 uint32_t prepare_output_signal(float value, uint8_t bitlength, bool is_signed, float dbcFactor, float dbcOffset)
 {
-	if (bitlength > 32)
+	if (bitlength == 0 || bitlength > 32 || dbcFactor == 0.0f)
 	{
-		//printf("Error: Bit length cannot exceed 32 bits\n");
+		//printf("Error: invalid bit length or zero DBC factor\n");
 		return 0;
 	}
 
@@ -2477,13 +2364,16 @@ uint32_t prepare_output_signal(float value, uint8_t bitlength, bool is_signed, f
 	value = (value - dbcOffset) / dbcFactor;
 
 	uint32_t result = 0;
+	uint32_t field_mask = (bitlength == 32) ? 0xFFFFFFFFU : ((1U << bitlength) - 1U);
 
 	if (is_signed)
 	{
-		int32_t int_value = (int32_t)round(value);
+		// 64-bit intermediates: 1 << 32 (and 1 << 31 as signed int) would be
+		// undefined behavior for full-width signals.
+		int64_t int_value = (int64_t)round(value);
 
-		int32_t min_value = -(1 << (bitlength - 1));
-		int32_t max_value = (1 << (bitlength - 1)) - 1;
+		int64_t min_value = -((int64_t)1 << (bitlength - 1));
+		int64_t max_value = ((int64_t)1 << (bitlength - 1)) - 1;
 
 		// Constrain within signed bit range
 		if (int_value < min_value)
@@ -2494,10 +2384,10 @@ uint32_t prepare_output_signal(float value, uint8_t bitlength, bool is_signed, f
 		// Convert to two's complement for negative values
 		if (int_value < 0)
 		{
-			int_value = (1 << bitlength) + int_value; // Two's complement conversion
+			int_value = ((int64_t)1 << bitlength) + int_value; // Two's complement conversion
 		}
 
-		result = (uint32_t)int_value & ((1U << bitlength) - 1);
+		result = (uint32_t)int_value & field_mask;
 	}
 	else
 	{
@@ -2528,6 +2418,10 @@ uint32_t prepare_output_signal(float value, uint8_t bitlength, bool is_signed, f
  */
 int32_t map_int(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max)
 {
+	if (in_max == in_min)
+	{
+		return out_min; /* degenerate input range — avoid division by zero */
+	}
 	return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
@@ -2542,6 +2436,10 @@ int32_t map_int(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int3
  */
 float map_float(float x, float in_min, float in_max, float out_min, float out_max)
 {
+	if (in_max == in_min)
+	{
+		return out_min; /* degenerate input range — avoid division by zero (inf/nan) */
+	}
 	return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
@@ -2556,6 +2454,10 @@ float map_float(float x, float in_min, float in_max, float out_min, float out_ma
  */
 int32_t clamped_map_int(int32_t x, int32_t in_min, int32_t in_max, int32_t out_min, int32_t out_max)
 {
+	if (in_max == in_min)
+	{
+		return out_min; /* degenerate input range — avoid division by zero */
+	}
 	if (x < in_min)
 	{
 		x = in_min;
@@ -2578,6 +2480,10 @@ int32_t clamped_map_int(int32_t x, int32_t in_min, int32_t in_max, int32_t out_m
  */
 float clamped_map_float(float x, float in_min, float in_max, float out_min, float out_max)
 {
+	if (in_max == in_min)
+	{
+		return out_min; /* degenerate input range — avoid division by zero (inf/nan) */
+	}
 	if (x < in_min)
 	{
 		x = in_min;
@@ -2633,23 +2539,49 @@ float getTimestamp()
 
 char *format_CAN_message(const CAN_Message *msg, char *buffer, size_t buf_size)
 {
-	int offset = 0;
+	size_t offset = 0;
+	int written;
+
+	if (buffer == NULL || buf_size == 0)
+	{
+		return buffer;
+	}
+	buffer[0] = '\0';
+
 	float ts = getTimestamp();
-	offset += snprintf(buffer + offset, buf_size - offset, "(%011.4f) ", ts);
-	// Format the bus and arbitration ID.
+	written = snprintf(buffer + offset, buf_size - offset, "(%011.4f) ", ts);
+	if (written < 0 || (size_t)written >= buf_size - offset)
+	{
+		return buffer; /* truncated — stop before offset can pass buf_size */
+	}
+	offset += (size_t)written;
+
+	// Format the bus and arbitration ID. (Explicit mapping: __builtin_clz(0)
+	// would be undefined for a message with an unset Bus field.)
+	unsigned bus_num = ((msg->Bus & CAN_1) != 0) ? 1U : ((msg->Bus & CAN_2) != 0) ? 2U : ((msg->Bus & CAN_3) != 0) ? 3U : 0U;
 	if (msg->is_extended_id)
 	{
-		offset += snprintf(buffer + offset, buf_size - offset, "%u %08lX#", (8 - __builtin_clz(msg->Bus) + 24), msg->arbitration_id);
+		written = snprintf(buffer + offset, buf_size - offset, "%u %08lX#", bus_num, msg->arbitration_id);
 	}
 	else
 	{
-		offset += snprintf(buffer + offset, buf_size - offset, "%u %03lX#", (8 - __builtin_clz(msg->Bus) + 24), msg->arbitration_id & 0x7FF);
+		written = snprintf(buffer + offset, buf_size - offset, "%u %03lX#", bus_num, msg->arbitration_id & 0x7FF);
 	}
+	if (written < 0 || (size_t)written >= buf_size - offset)
+	{
+		return buffer;
+	}
+	offset += (size_t)written;
 
 	// Format the data bytes into hexadecimal.
 	for (int i = 0; i < msg->dlc && i < CAN_MSG_MAX_DLC; ++i)
 	{
-		offset += snprintf(buffer + offset, buf_size - offset, "%02X", msg->data[i]);
+		written = snprintf(buffer + offset, buf_size - offset, "%02X", msg->data[i]);
+		if (written < 0 || (size_t)written >= buf_size - offset)
+		{
+			return buffer;
+		}
+		offset += (size_t)written;
 	}
 
 	return buffer;

@@ -98,7 +98,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 #define LOCAL_BUFFER_SIZE 256 // Define an appropriate buffer size
 // Define the local buffer and buffer index
-static char local_buffer[LOCAL_BUFFER_SIZE];
+static char local_buffer[LOCAL_BUFFER_SIZE + 1]; // +1 so the null terminator fits when the buffer is full
 static uint16_t buffer_index = 0;
 ///////////////////////////////////////////////////////////////////////////////
 
