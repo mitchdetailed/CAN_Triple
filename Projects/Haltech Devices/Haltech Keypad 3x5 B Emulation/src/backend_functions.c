@@ -153,7 +153,7 @@ static inline FDCAN_HandleTypeDef *can_handle_from_index(int idx)
 }
 
 /* Return the 0..2 index for a HAL handle (used inside the interrupt callbacks). */
-static inline int can_handle_index(FDCAN_HandleTypeDef *hfdcan)
+static inline int can_handle_index(const FDCAN_HandleTypeDef *hfdcan)
 {
 	if (hfdcan->Instance == FDCAN1) return 0;
 	if (hfdcan->Instance == FDCAN2) return 1;
@@ -478,8 +478,10 @@ uint8_t setupCAN_FDbus(CAN_Bus bus, uint32_t mainBitrate, uint32_t dataBitrate, 
 	uint32_t datSJW = (datSeg2 < 4) ? datSeg2 : 4;
 
 	printf("Setup CAN FD Bus %d:\r\n", bus);
-	printf("  Nominal: Prescaler=%lu, Seg1=%lu, Seg2=%lu, SJW=%lu\r\n", nomPrescaler, nomSeg1, nomSeg2, nomSJW);
-	printf("  Data:    Prescaler=%lu, Seg1=%lu, Seg2=%lu, SJW=%lu\r\n", datPrescaler, datSeg1, datSeg2, datSJW);
+	printf("  Nominal: Prescaler=%lu, Seg1=%lu, Seg2=%lu, SJW=%lu\r\n",
+	       (unsigned long)nomPrescaler, (unsigned long)nomSeg1, (unsigned long)nomSeg2, (unsigned long)nomSJW);
+	printf("  Data:    Prescaler=%lu, Seg1=%lu, Seg2=%lu, SJW=%lu\r\n",
+	       (unsigned long)datPrescaler, (unsigned long)datSeg1, (unsigned long)datSeg2, (unsigned long)datSJW);
 
 	uint32_t frameFormat = bitrateSwitch ? FDCAN_FRAME_FD_BRS : FDCAN_FRAME_FD_NO_BRS;
 
@@ -857,6 +859,8 @@ CAN_ErrorStatus getCANErrorStatus(CAN_Bus bus)
 }
 
 /* Interrupt Service Routine for Rx Messages */
+/* Signature is fixed by the HAL weak symbol; `const` would break the override. */
+/* cppcheck-suppress constParameterPointer */
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 {
 	int cb_idx = can_handle_index(hfdcan);
@@ -969,6 +973,8 @@ void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 }
 
 /* Interrupt Service Routine for Successfully Transmitting Messages.. */
+/* Signature is fixed by the HAL weak symbol; `const` would break the override. */
+/* cppcheck-suppress constParameterPointer */
 void HAL_FDCAN_TxBufferCompleteCallback(FDCAN_HandleTypeDef *hfdcan, uint32_t BufferIndexes)
 {
 	if (hfdcan->Instance == FDCAN1)
@@ -984,7 +990,7 @@ void HAL_FDCAN_TxBufferCompleteCallback(FDCAN_HandleTypeDef *hfdcan, uint32_t Bu
 
 /* Add to CAN Receive Queue
 CAN_1: 1, CAN_2: 2, CAN_3: 4 */
-uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, uint8_t rxData[])
+uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, const uint8_t rxData[])
 {
 	uint8_t return_val = 0;
 	if ((bus & CAN_1) == CAN_1)
@@ -997,10 +1003,7 @@ uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, 
 			can1_Rx_qData[can1_Rx_qHead].EXT_ID = EXT_ID;
 			can1_Rx_qData[can1_Rx_qHead].arb_id = ID;
 			can1_Rx_qData[can1_Rx_qHead].dlc = dlc_c;
-			for (uint8_t i = 0; i < dlc_c; i++)
-			{
-				can1_Rx_qData[can1_Rx_qHead].data[i] = rxData[i];
-			}
+			memcpy(can1_Rx_qData[can1_Rx_qHead].data, rxData, dlc_c);
 			can1_Rx_qHead = can1_Rx_qNextHead;
 			can1_Rx_qElements++;
 		}
@@ -1020,10 +1023,7 @@ uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, 
 			can2_Rx_qData[can2_Rx_qHead].EXT_ID = EXT_ID;
 			can2_Rx_qData[can2_Rx_qHead].arb_id = ID;
 			can2_Rx_qData[can2_Rx_qHead].dlc = dlc_c;
-			for (uint8_t i = 0; i < dlc_c; i++)
-			{
-				can2_Rx_qData[can2_Rx_qHead].data[i] = rxData[i];
-			}
+			memcpy(can2_Rx_qData[can2_Rx_qHead].data, rxData, dlc_c);
 			can2_Rx_qHead = can2_Rx_qNextHead;
 			can2_Rx_qElements++;
 		}
@@ -1043,10 +1043,7 @@ uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, 
 			can3_Rx_qData[can3_Rx_qHead].EXT_ID = EXT_ID;
 			can3_Rx_qData[can3_Rx_qHead].arb_id = ID;
 			can3_Rx_qData[can3_Rx_qHead].dlc = dlc_c;
-			for (uint8_t i = 0; i < dlc_c; i++)
-			{
-				can3_Rx_qData[can3_Rx_qHead].data[i] = rxData[i];
-			}
+			memcpy(can3_Rx_qData[can3_Rx_qHead].data, rxData, dlc_c);
 			can3_Rx_qHead = can3_Rx_qNextHead;
 			can3_Rx_qElements++;
 		}
@@ -1068,7 +1065,7 @@ uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, 
  * \param data Message data (8 Bytes).
  * \return 1, 2, or 3 based on CAN Bus applicable
  */
-uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t data[])
+uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, const uint8_t data[])
 {
 	uint8_t return_val = 0;
 	if ((bus & CAN_1) == CAN_1)
@@ -1081,10 +1078,7 @@ uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, 
 			can1_Tx_qData[can1_Tx_qHead].EXT_ID = is_extended_id;
 			can1_Tx_qData[can1_Tx_qHead].arb_id = arbitration_id;
 			can1_Tx_qData[can1_Tx_qHead].dlc = dlc_c;
-			for (uint8_t i = 0; i < dlc_c; i++)
-			{
-				can1_Tx_qData[can1_Tx_qHead].data[i] = data[i];
-			}
+			memcpy(can1_Tx_qData[can1_Tx_qHead].data, data, dlc_c);
 			can1_Tx_qHead = can1_Tx_qNextHead;
 			can1_Tx_qElements++;
 		}
@@ -1105,10 +1099,7 @@ uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, 
 			can2_Tx_qData[can2_Tx_qHead].EXT_ID = is_extended_id;
 			can2_Tx_qData[can2_Tx_qHead].arb_id = arbitration_id;
 			can2_Tx_qData[can2_Tx_qHead].dlc = dlc_c;
-			for (uint8_t i = 0; i < dlc_c; i++)
-			{
-				can2_Tx_qData[can2_Tx_qHead].data[i] = data[i];
-			}
+			memcpy(can2_Tx_qData[can2_Tx_qHead].data, data, dlc_c);
 			can2_Tx_qHead = can2_Tx_qNextHead;
 			can2_Tx_qElements++;
 		}
@@ -1129,10 +1120,7 @@ uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, 
 			can3_Tx_qData[can3_Tx_qHead].EXT_ID = is_extended_id;
 			can3_Tx_qData[can3_Tx_qHead].arb_id = arbitration_id;
 			can3_Tx_qData[can3_Tx_qHead].dlc = dlc_c;
-			for (uint8_t i = 0; i < dlc_c; i++)
-			{
-				can3_Tx_qData[can3_Tx_qHead].data[i] = data[i];
-			}
+			memcpy(can3_Tx_qData[can3_Tx_qHead].data, data, dlc_c);
 			can3_Tx_qHead = can3_Tx_qNextHead;
 			can3_Tx_qElements++;
 		}
@@ -1546,7 +1534,7 @@ uint8_t reflect8(uint8_t data)
  * \param reflectOutput Boolean reflect the output.
  * \return CRC Value
  */
-uint8_t calculateCRC8(uint8_t *data, size_t length, uint8_t polynomial, uint8_t crcInit, uint8_t finalXor, bool reflectInput, bool reflectOutput)
+uint8_t calculateCRC8(const uint8_t *data, size_t length, uint8_t polynomial, uint8_t crcInit, uint8_t finalXor, bool reflectInput, bool reflectOutput)
 {
 	uint8_t crc = crcInit;
 	for (size_t i = 0; i < length; ++i)
@@ -1603,7 +1591,7 @@ uint16_t reflect16(uint16_t data)
  * \param reflectOutput Boolean reflect the output.
  * \return CRC Value
  */
-uint16_t calculateCRC16(uint8_t *data, size_t length, uint16_t polynomial, uint16_t crcInit, uint16_t finalXor, bool reflectInput, bool reflectOutput)
+uint16_t calculateCRC16(const uint8_t *data, size_t length, uint16_t polynomial, uint16_t crcInit, uint16_t finalXor, bool reflectInput, bool reflectOutput)
 {
 	uint16_t crc = crcInit;
 	for (size_t i = 0; i < length; ++i)
@@ -1660,7 +1648,7 @@ uint32_t reflect32(uint32_t data)
  * \param reflectOutput Boolean reflect the output.
  * \return CRC Value
  */
-uint32_t calculateCRC32(uint8_t *data, size_t length, uint32_t polynomial, uint32_t crcInit, uint32_t finalXor, bool reflectInput, bool reflectOutput)
+uint32_t calculateCRC32(const uint8_t *data, size_t length, uint32_t polynomial, uint32_t crcInit, uint32_t finalXor, bool reflectInput, bool reflectOutput)
 {
 	uint32_t crc = crcInit;
 	for (size_t i = 0; i < length; ++i)
@@ -1763,7 +1751,7 @@ uint8_t getRDP(void)
 {
 	uint8_t rdp_val = 0;
 	uint8_t rdplevel = 0;
-	rdp_val = (uint8_t)((0xFBFFFCAA & FLASH_OPTR_RDP_Msk) >> FLASH_OPTR_RDP_Pos);
+	rdp_val = (uint8_t)((FLASH->OPTR & FLASH_OPTR_RDP_Msk) >> FLASH_OPTR_RDP_Pos);
 	if (rdp_val == 0xAA)
 	{
 		rdplevel = 0;
@@ -1788,7 +1776,7 @@ uint8_t setRDP(bool on)
 {
 	uint8_t returnval = 0;
 	uint8_t level = getRDP();
-	if ((level == 0) & (on == true))
+	if ((level == 0) && (on == true))
 	{
 		HAL_FLASH_Unlock();
 		HAL_FLASH_OB_Unlock();
@@ -1801,7 +1789,7 @@ uint8_t setRDP(bool on)
 		HAL_FLASH_Lock();
 		returnval = 1;
 	}
-	else if ((level != 0) & (on == false))
+	else if ((level != 0) && (on == false))
 	{
 		HAL_FLASH_Unlock();
 		HAL_FLASH_OB_Unlock();
@@ -1938,7 +1926,6 @@ void writeFlash(uint32_t page, uint8_t *Data, uint16_t dataSize)
 		/* Program the user Flash area word by word*/
 		uint32_t pageaddress = 2048 * page + 0x08000000;
 		uint16_t j = 0;
-		HAL_StatusTypeDef status;
 		for (uint32_t i = 0; i < dataSize; i += 8)
 		{
 			uint64_t writeValue = 0;
@@ -1952,7 +1939,7 @@ void writeFlash(uint32_t page, uint8_t *Data, uint16_t dataSize)
 				}
 			}
 
-			status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, pageaddress, writeValue);
+			HAL_StatusTypeDef status = HAL_FLASH_Program(FLASH_TYPEPROGRAM_DOUBLEWORD, pageaddress, writeValue);
 			if (status == HAL_OK)
 			{
 				pageaddress += 8;
@@ -2639,11 +2626,11 @@ char *format_CAN_message(const CAN_Message *msg, char *buffer, size_t buf_size)
 	// Format the bus and arbitration ID.
 	if (msg->is_extended_id)
 	{
-		offset += snprintf(buffer + offset, buf_size - offset, "%u %08lX#", (8 - __builtin_clz(msg->Bus) + 24), msg->arbitration_id);
+		offset += snprintf(buffer + offset, buf_size - offset, "%u %08lX#", (8 - __builtin_clz(msg->Bus) + 24), (unsigned long)msg->arbitration_id);
 	}
 	else
 	{
-		offset += snprintf(buffer + offset, buf_size - offset, "%u %03lX#", (8 - __builtin_clz(msg->Bus) + 24), msg->arbitration_id & 0x7FF);
+		offset += snprintf(buffer + offset, buf_size - offset, "%u %03lX#", (8 - __builtin_clz(msg->Bus) + 24), (unsigned long)(msg->arbitration_id & 0x7FF));
 	}
 
 	// Format the data bytes into hexadecimal.

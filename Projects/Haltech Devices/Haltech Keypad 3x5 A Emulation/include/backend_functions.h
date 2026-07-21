@@ -172,7 +172,8 @@ CAN_ErrorCounts getCANErrorCounts(CAN_Bus bus);
 CAN_ErrorStatus getCANErrorStatus(CAN_Bus bus);
 
 // CAN Communication Layer Fuction Prototypes //
-uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, uint8_t data[CAN_MSG_MAX_DLC]);
+/* `data` must hold at least `dlc` bytes; only that many are read. */
+uint8_t send_message(CAN_Bus bus, bool is_extended_id, uint32_t arbitration_id, uint8_t dlc, const uint8_t data[]);
 void onReceive(CAN_Message);
 
 /**
@@ -185,7 +186,7 @@ void onCANError(CAN_Bus bus, const CAN_ErrorStatus *status);
 
 void trigger_CAN_RX(void);
 void trigger_CAN_TX(void);
-uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, uint8_t rxData[CAN_MSG_MAX_DLC]);
+uint8_t add_to_CAN_RX_Queue(CAN_Bus bus, bool EXT_ID, uint32_t ID, uint8_t DLC, const uint8_t rxData[]);
 
 // Arithmatic Functions related to CAN Reception and Transmission //
 double dbc_decode(const uint8_t *data, datatype_t datatype, bool is_big_endian, uint8_t dbc_start_bit, uint8_t dbc_bit_length, float factor, float offset, uint8_t decimal_places);
@@ -214,9 +215,9 @@ void toggleLED(gpio_LED led);
 uint8_t reflect8(uint8_t data);
 uint16_t reflect16(uint16_t data);
 uint32_t reflect32(uint32_t data);
-uint8_t calculateCRC8(uint8_t *data, size_t length, uint8_t polynomial, uint8_t crcInit, uint8_t finalXor, bool reflectInput, bool reflectOutput);
-uint16_t calculateCRC16(uint8_t *data, size_t length, uint16_t polynomial, uint16_t crcInit, uint16_t finalXor, bool reflectInput, bool reflectOutput);
-uint32_t calculateCRC32(uint8_t *data, size_t length, uint32_t polynomial, uint32_t crcInit, uint32_t finalXor, bool reflectInput, bool reflectOutput);
+uint8_t calculateCRC8(const uint8_t *data, size_t length, uint8_t polynomial, uint8_t crcInit, uint8_t finalXor, bool reflectInput, bool reflectOutput);
+uint16_t calculateCRC16(const uint8_t *data, size_t length, uint16_t polynomial, uint16_t crcInit, uint16_t finalXor, bool reflectInput, bool reflectOutput);
+uint32_t calculateCRC32(const uint8_t *data, size_t length, uint32_t polynomial, uint32_t crcInit, uint32_t finalXor, bool reflectInput, bool reflectOutput);
 
 // Security and Readout Protection Function Prototypes //
 uint32_t getSerialNumber(void);

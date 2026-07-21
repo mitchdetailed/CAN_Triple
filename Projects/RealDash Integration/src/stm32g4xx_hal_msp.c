@@ -92,6 +92,7 @@ static uint32_t HAL_RCC_FDCAN_CLK_ENABLED = 0;
  * @param hfdcan: FDCAN handle pointer
  * @retval None
  */
+/* cppcheck-suppress constParameterPointer ; HAL weak-symbol signature */
 void HAL_FDCAN_MspInit(FDCAN_HandleTypeDef *hfdcan)
 {
   GPIO_InitTypeDef GPIO_InitStruct = {0};
@@ -235,6 +236,7 @@ void HAL_FDCAN_MspInit(FDCAN_HandleTypeDef *hfdcan)
  * @param hfdcan: FDCAN handle pointer
  * @retval None
  */
+/* cppcheck-suppress constParameterPointer ; HAL weak-symbol signature */
 void HAL_FDCAN_MspDeInit(FDCAN_HandleTypeDef *hfdcan)
 {
   if (hfdcan->Instance == FDCAN1)
@@ -319,6 +321,7 @@ void HAL_FDCAN_MspDeInit(FDCAN_HandleTypeDef *hfdcan)
  * @param htim_base: TIM_Base handle pointer
  * @retval None
  */
+/* cppcheck-suppress constParameterPointer ; HAL weak-symbol signature */
 void HAL_TIM_Base_MspInit(TIM_HandleTypeDef *htim_base)
 {
   if (htim_base->Instance == TIM2)
@@ -357,6 +360,7 @@ void HAL_TIM_Base_MspInit(TIM_HandleTypeDef *htim_base)
  * @param htim_base: TIM_Base handle pointer
  * @retval None
  */
+/* cppcheck-suppress constParameterPointer ; HAL weak-symbol signature */
 void HAL_TIM_Base_MspDeInit(TIM_HandleTypeDef *htim_base)
 {
   if (htim_base->Instance == TIM2)

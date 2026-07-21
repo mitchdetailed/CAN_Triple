@@ -6,7 +6,9 @@
 # PlatformIO IDE settings
 .vscode/
 
-# IntelliSense database
+# IntelliSense / clangd index
+.cache/
+compile_commands.json
 *.code-workspace
 *.sdf
 *.suo

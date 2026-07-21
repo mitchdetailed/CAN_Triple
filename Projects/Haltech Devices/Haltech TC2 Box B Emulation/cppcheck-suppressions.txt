@@ -1,0 +1,42 @@
+# cppcheck suppressions for the CAN_Triple firmware.
+# Wired up via `check_flags` in platformio.ini.
+
+# NOTE: a comment line must have text after the '#'. cppcheck only treats a
+# line as a comment when it is longer than one character, so a BARE '#' is
+# parsed as a suppression and aborts the entire run with
+# "cppcheck: error: Failed to add suppression. No id." -- which looks exactly
+# like a clean report. Use blank lines to separate paragraphs instead.
+
+# Everything listed here is a limitation of the analyser, not a defect. Real
+# findings are fixed in the source rather than silenced here.
+
+# --------------------------------------------------------------------------
+# unusedFunction
+
+# cppcheck has no view of the Cortex-M vector table, the HAL's weak-symbol
+# dispatch, or the user projects that link against this framework, so it
+# reports almost every entry point as dead. Every hit is one of:
+
+#   * a HAL weak callback override   - HAL_FDCAN_*Callback, HAL_*_MspInit, ...
+#   * an ISR reached via the vector table  - src/stm32g4xx_it.c
+#   * a newlib syscall stub          - src/syscalls.c, src/sysmem.c
+#   * public API declared in include/backend_functions.h for user_code.c
+#   * a user event hook called from the main-loop scheduler - src/user_code.c
+
+# Comment this out temporarily if you ever want to hunt for genuinely dead
+# helpers, but expect to sift ~120 false positives.
+unusedFunction
+
+# --------------------------------------------------------------------------
+# constParameterPointer
+
+# Not suppressed here. Every case is a HAL weak-callback or newlib syscall
+# whose signature is fixed by the vendor -- adding `const` would change the
+# signature so the weak symbol is no longer overridden and the callback
+# silently stops firing. Those are marked with an inline
+# `cppcheck-suppress constParameterPointer` comment at each declaration, which
+# keeps the reason next to the code and stays correct as lines move.
+
+# Note: `id:file` entries in THIS file do not match under `pio check` (they do
+# work when cppcheck is invoked directly), which is why the inline form is used
+# throughout. If you add one here, verify it actually takes effect.

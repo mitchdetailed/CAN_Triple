@@ -438,7 +438,7 @@ static size_t _ftoa(out_fct_type out, char *buffer, size_t idx, size_t maxlen, d
   if (prec == 0U)
   {
     diff = value - (double)whole;
-    if ((!(diff < 0.5) || (diff > 0.5)) && (whole & 1))
+    if (!(diff < 0.5) && (whole & 1))
     {
       // exactly 0.5 and ODD, then round up
       // 1.5 -> 2, but 2.5 -> 2
@@ -1054,8 +1054,8 @@ void _putchar(char character)
   // Add character to local buffer
   local_buffer[buffer_index++] = character;
 
-  // If buffer is full or character is a newline, send the buffer
-  if (buffer_index >= LOCAL_BUFFER_SIZE || character == '\n')
+  // Flush one byte early so there is always room for the null terminator
+  if (buffer_index >= LOCAL_BUFFER_SIZE - 1 || character == '\n')
   {
     local_buffer[buffer_index] = '\0'; // Null-terminate the string
     serialPrint(local_buffer);         // Send the buffer
@@ -1064,6 +1064,8 @@ void _putchar(char character)
 }
 
 // _write function implementation
+// Signature is fixed by newlib's syscall contract; `const` would not match.
+// cppcheck-suppress constParameterPointer
 int _write(int file, char *ptr, int len)
 {
   // Redirect output to the appropriate buffer
