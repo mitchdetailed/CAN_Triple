@@ -621,6 +621,8 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+/* Signature is fixed by the HAL weak symbol; `const` would break the override. */
+/* cppcheck-suppress constParameterPointer */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
   if (htim->Instance == TIM2)
@@ -686,12 +688,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   }
 }
 
+/* Signature is fixed by the HAL weak symbol; `const` would break the override. */
+/* cppcheck-suppress constParameterPointer */
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
 {
   if (huart->Instance == USART1)
   {
-    // Ensure Size does not exceed the buffer
-    if (Size <= 256)
+    // Ensure Size leaves room in dataBuffer for the null terminator
+    if (Size < sizeof(dataBuffer))
     {
       // Copy data from rxBuffer to dataBuffer
       memcpy(dataBuffer, rxBuffer, Size);
@@ -703,7 +707,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size)
       dataReady = 1;
 
       // Clear the rxBuffer after processing the data
-      memset(rxBuffer, 0, 256);
+      memset(rxBuffer, 0, sizeof(rxBuffer));
 
       // Restart DMA reception
       __HAL_UART_ENABLE_IT(&huart1, UART_IT_IDLE);
