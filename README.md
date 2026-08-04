@@ -12,6 +12,18 @@ The CAN Triple is designed to simplify the scope of interfacing multiple CAN Bus
 - Teleplot : A plotting tool for UART messages
 - Serial Monitor : Easy to use Serial Monitor
 
+## Programming / Uploading
+Every project is programmed with an **STLINK-V3MINI** using the same shared configuration,
+which lives in `boards/CAN_Triple.json` and works with any OpenOCD version PlatformIO
+installs. Just press **Upload** in PlatformIO - no per-machine setup.
+
+If an upload fails, or after adding a new project, see
+[Programming Tools/README.md](Programming%20Tools/README.md):
+```powershell
+python "Programming Tools\sync_programming_config.py" --doctor   # what this machine will use
+python "Programming Tools\sync_programming_config.py"            # sync all projects
+```
+
 ## Code Function Calls for user_code.c
 
 ### Setting CAN Bitrate : 

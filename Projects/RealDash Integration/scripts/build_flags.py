@@ -40,7 +40,9 @@ def check_float_usage(src_dir):
         for file in files:
             if file.endswith(".c") or file.endswith(".cpp"):
                 file_path = os.path.join(root, file)
-                with open(file_path, "r", encoding="utf-8") as f:
+                # errors="replace" keeps a stray non-UTF-8 byte in a source file
+                # from aborting the build on machines with a different code page.
+                with open(file_path, "r", encoding="utf-8", errors="replace") as f:
                     for line_number, line in enumerate(f, start=1):
                         line = line.strip()
 
@@ -78,20 +80,22 @@ src_dir = os.path.join(env["PROJECT_DIR"], "src")
 # Check for float-related functions
 needs_printf, needs_scanf, occurrences = check_float_usage(src_dir)
 
-# Add flags dynamically based on which functions are used
+# Output stays plain ASCII: PlatformIO echoes these lines through the console,
+# which is not always UTF-8 (redirected output, CI, non-English code pages), and
+# an emoji there aborts the whole build with a UnicodeEncodeError.
 if needs_printf:
     env.Append(LINKFLAGS=["-Wl,-u,_printf_float"])
-    print("✅ Float support enabled for printf-family functions")
+    print("[build_flags] Float support enabled for printf-family functions")
 
 if needs_scanf:
     env.Append(LINKFLAGS=["-Wl,-u,_scanf_float"])
-    print("✅ Float support enabled for scanf-family functions")
+    print("[build_flags] Float support enabled for scanf-family functions")
 
 if not (needs_printf or needs_scanf):
-    print("ℹ️ Float support not required")
+    print("[build_flags] Float support not required")
 
 # Print where printf or scanf was found
 if occurrences:
-    print("\n🔍 Found printf/scanf in the following locations:")
+    print("[build_flags] Found printf/scanf in the following locations:")
     for file, line_number, function in occurrences:
-        print(f"   - {file} (line {line_number}): {function}")
+        print("   - %s (line %d): %s" % (file, line_number, function))
